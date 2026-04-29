@@ -62,7 +62,7 @@ export default function Auth() {
 
         <div style={{ textAlign: 'center', marginBottom: 30 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 48, letterSpacing: 8, color: 'var(--text-light)' }}>
-            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span>
+            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.1</span>
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: 4, marginTop: 8, textTransform: 'uppercase' }}>
             AI Waste Management

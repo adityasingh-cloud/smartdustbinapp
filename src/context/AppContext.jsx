@@ -110,6 +110,7 @@ export function AppProvider({ children }) {
       eco_coins: 0, total_scans: 0, 
       level: 1 
     }
+    console.log('DEBUG: Registering with', profileData)
     const { error } = await supabase.from('users').insert(profileData)
     if (error) { setLoading(false); throw new Error(error.message) }
     await supabase.from('user_emails').insert({ email_key: email.replace(/[.@]/g, '_'), uid, email })
