@@ -100,6 +100,7 @@ export function AppProvider({ children }) {
     return userData
   }
 
+  // Registration with minimal fields to prevent schema errors
   const register = async (name, email, password) => {
     setLoading(true)
     const uid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
