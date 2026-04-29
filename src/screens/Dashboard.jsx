@@ -1,31 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
-import BinModel3D from '../components/BinModel3D'
-import ErrorBoundary from '../components/ErrorBoundary'
 import { useApp } from '../context/AppContext'
+import { LANGUAGES } from '../utils/translations'
 
-function AnimatedNumber({ target, duration = 1800 }) {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    const start = Date.now()
-    const tick = () => {
-      const elapsed = Date.now() - start
-      const progress = Math.min(elapsed / duration, 1)
-      const ease = 1 - Math.pow(1 - progress, 3)
-      setVal(Math.round(ease * target))
-      if (progress < 1) requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-  }, [target, duration])
+const NumAnim = ({ val }) => {
   return <>{val.toLocaleString()}</>
 }
 
 export default function Dashboard({ onBell, onSettings }) {
-  const { user, binData, ecoCoins, totalScans, recentScans } = useApp()
+  const { user, binData, ecoCoins, totalScans, recentScans, leaderboard, t, language, changeLanguage } = useApp()
 
   const BINS = [
-    { label: 'Dry',   pct: binData?.dry || 0,   color: '#E8C547', cls: 'dry',   icon: '🟡' },
-    { label: 'Wet',   pct: binData?.wet || 0,   color: '#4A7C4E', cls: 'wet',   icon: '🟢' },
-    { label: 'Metal', pct: binData?.metal || 0, color: '#3A5A8C', cls: 'metal', icon: '🔵' },
+    { label: t('dry'),   pct: binData?.dry || 0,   color: '#E8C547', icon: '🟡' },
+    { label: t('wet'),   pct: binData?.wet || 0,   color: '#4A7C4E', icon: '🟢' },
+    { label: t('metal'), pct: binData?.metal || 0, color: '#3A5A8C', icon: '🔵' },
   ]
 
   const formatTime = (ts) => {
@@ -40,151 +26,133 @@ export default function Dashboard({ onBell, onSettings }) {
       <div className="topbar">
         <div className="topbar-logo">SMART<span>BIN</span></div>
         <div className="topbar-right">
-          <button className="icon-btn notif-dot" title="Notifications" onClick={onBell}>🔔</button>
-          <button className="icon-btn" title="Settings" onClick={onSettings}>⚙</button>
+          <select 
+            value={language} 
+            onChange={(e) => changeLanguage(e.target.value)}
+            style={{ 
+              background: 'var(--card-dark)', color: 'var(--yellow)', 
+              border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
+              fontSize: 10, padding: '2px 4px', outline: 'none'
+            }}
+          >
+            {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.code.toUpperCase()}</option>)}
+          </select>
+          <button className="icon-btn notif-dot" title={t('notifications')} onClick={onBell}>🔔</button>
+          <button className="icon-btn" title={t('settings')} onClick={onSettings}>⚙</button>
         </div>
       </div>
 
-      {/* Hero 3D Bin */}
-      <div className="px card-enter" style={{ marginBottom: 8 }}>
-        <div style={{ position: 'relative' }}>
-          <BinModel3D />
-          <div style={{
-            position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(26,26,24,0.8)', backdropFilter: 'blur(10px)',
-            padding: '6px 14px', borderRadius: '99px',
-            border: '1px solid rgba(74,124,78,0.4)',
-          }}>
-            <span className="pulse-dot" />
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, color: '#6BBF6F' }}>
-              AI Segregation Active
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bin fill stats */}
-      <div className="section-label px mt-3">Fill Levels</div>
-      <div className="px" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
-        {BINS.map((b, i) => (
-          <div key={b.label} className="card card-enter" style={{ padding: '12px 10px', animationDelay: `${0.1 + i * 0.08}s` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 16 }}>{b.icon}</span>
-              <span className={`badge badge-${b.cls}`}>{b.pct}%</span>
-            </div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginTop: 6, color: 'var(--text-light)' }}>
-              {b.label}
-            </div>
-            <div className="fill-bar-wrap">
-              <div
-                className="fill-bar"
-                style={{ width: `${b.pct}%`, background: `linear-gradient(90deg, ${b.color}88, ${b.color})` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* EcoCoins */}
-      <div className="px card-enter" style={{ animationDelay: '0.25s', marginBottom: 16 }}>
+      {/* Hero Stats */}
+      <div className="px card-enter" style={{ marginTop: 8 }}>
         <div className="ecocoins-card">
-          <div className="texture" />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 3, opacity: 0.6, marginBottom: 4 }}>
-                EcoCoins Balance
+          <div className="ecocoins-num"><NumAnim val={ecoCoins} /></div>
+          <div className="ecocoins-sub">{t('yourCoins')}</div>
+          <div className="ecocoins-cta">
+            {t('ecoWarrior')} · LVL {user?.level || 1} 
+            <span style={{ marginLeft: 'auto' }}>→</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats Grid */}
+      <div className="px card-enter" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+        <div className="card" style={{ padding: '12px 16px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, lineHeight: 1 }}>{totalScans}</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>{t('totalScans')}</div>
+        </div>
+        <div className="card" style={{ padding: '12px 16px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, lineHeight: 1, color: '#6BBF6F' }}>{(user?.co2_saved || 0).toFixed(1)}<span style={{ fontSize: 14 }}>KG</span></div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>{t('co2Saved')}</div>
+        </div>
+      </div>
+
+      {/* Bin Status */}
+      <div className="section-label px" style={{ marginTop: 24 }}>{t('binStatus')}</div>
+      <div className="px card-enter">
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {BINS.map(bin => (
+            <div key={bin.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>{bin.icon}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>{bin.label}</span>
+                </div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: bin.pct > 80 ? '#E85454' : bin.color, fontWeight: 600 }}>{bin.pct}%</span>
               </div>
-              <div className="ecocoins-num">
-                <AnimatedNumber target={ecoCoins} />
-              </div>
-              <div className="ecocoins-sub">{totalScans} Total Scans • Level {user?.level || 1}</div>
-              <div className="ecocoins-cta">
-                Redeem for rewards <span>→</span>
+              <div className="fill-bar-wrap">
+                <div 
+                  className="fill-bar" 
+                  style={{ width: `${bin.pct}%`, background: bin.color, boxShadow: `0 0 10px ${bin.color}44` }} 
+                />
               </div>
             </div>
-            <div style={{ fontSize: 48, opacity: 0.7, lineHeight: 1 }}>🪙</div>
-          </div>
+          ))}
+        </div>
+      </div>
 
-          {/* Coin burst particles */}
-          <div style={{ position: 'absolute', top: 20, right: 60, pointerEvents: 'none' }}>
-            {[...Array(5)].map((_, i) => (
-              <div key={i} style={{
-                position: 'absolute',
-                fontSize: 12,
-                animation: `coinBurst 1.5s ease-out ${0.8 + i * 0.15}s both`,
-                left: Math.cos((i / 5) * Math.PI * 2) * 30,
-                top: Math.sin((i / 5) * Math.PI * 2) * 30,
-              }}>🪙</div>
-            ))}
-          </div>
+      {/* Community Leaderboard */}
+      <div className="section-label px" style={{ marginTop: 24 }}>COMMUNITY LEADERBOARD</div>
+      <div className="px card-enter">
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {leaderboard.length > 0 ? leaderboard.map((u, i) => (
+            <div key={i} style={{ 
+              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+              borderBottom: i < leaderboard.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+              background: u.uid === user?.uid ? 'rgba(232,197,71,0.05)' : 'transparent'
+            }}>
+              <div style={{ 
+                fontFamily: 'var(--font-display)', fontSize: 18, width: 24, 
+                color: i === 0 ? 'var(--yellow)' : 'var(--text-muted)' 
+              }}>
+                #{i + 1}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>LVL {u.level}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--yellow)' }}>{u.eco_coins}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)' }}>COINS</div>
+              </div>
+            </div>
+          )) : (
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading leaderboard...</div>
+          )}
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div className="section-label px">Recent Disposals</div>
-      <div className="px" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-        {recentScans.length === 0 ? (
-          <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-            NO ACTIVITY YET
-          </div>
-        ) : recentScans.map((a, i) => (
-          <div key={i} className="card card-enter flex items-center justify-between" style={{ animationDelay: `${0.3 + i * 0.07}s`, padding: '12px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: `rgba(${a.category === 'dry' ? '232,197,71' : a.category === 'wet' ? '74,124,78' : '58,90,140'},0.15)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-              }}>
-                {a.category === 'dry' ? '♻' : a.category === 'wet' ? '🌿' : '🔩'}
+      <div className="section-label px" style={{ marginTop: 24 }}>{t('recentActivity')}</div>
+      <div className="px card-enter" style={{ paddingBottom: 20 }}>
+        {recentScans.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {recentScans.map((s, i) => (
+              <div key={i} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ 
+                    width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.05)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16
+                  }}>
+                    {s.category === 'dry' ? '♻️' : s.category === 'wet' ? '🌿' : '🔩'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{s.item_name}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)' }}>{formatTime(s.created_at)}</div>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--yellow)', fontWeight: 600 }}>+{s.eco_coins_earned}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{a.item_name}</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{formatTime(a.created_at)}</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-              <span className={`badge badge-${a.category}`}>{a.category}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#6BBF6F' }}>+{a.eco_coins_earned} coins</span>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* GPS Map */}
-      <div className="section-label px">Bin Location</div>
-      <div className="px card-enter" style={{ animationDelay: '0.45s', marginBottom: 24 }}>
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="map-preview">
-            <div className="map-grid" />
-            <div className="map-pin">📍</div>
-            <div style={{
-              position: 'absolute', bottom: 8, left: 8,
-              background: 'rgba(26,26,24,0.85)', backdropFilter: 'blur(8px)',
-              padding: '4px 10px', borderRadius: 4,
-              fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--yellow)',
-            }}>
-              BIN #SB-042 · {binData?.name || 'Main Bin'}
-            </div>
-            <div style={{
-              position: 'absolute', top: 8, right: 8,
-              background: 'rgba(74,124,78,0.2)', border: '1px solid rgba(74,124,78,0.5)',
-              padding: '2px 8px', borderRadius: 4,
-              fontFamily: 'var(--font-mono)', fontSize: 9, color: '#6BBF6F', textTransform: 'uppercase',
-            }}>
-              ● Online
-            </div>
+        ) : (
+          <div className="card" style={{ textAlign: 'center', padding: '32px 16px' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>✨</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>{t('noActivity')}</div>
           </div>
-        </div>
+        )}
       </div>
-
-      <style>{`
-        @keyframes coinBurst {
-          0%   { transform: scale(0) translate(0,0); opacity: 1; }
-          60%  { opacity: 1; }
-          100% { transform: scale(1.2) translate(var(--tx, 20px), var(--ty, -30px)); opacity: 0; }
-        }
-      `}</style>
     </div>
   )
 }

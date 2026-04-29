@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { t } from '../utils/translations'
 
 const AppContext = createContext({})
 
@@ -9,7 +10,9 @@ export function AppProvider({ children }) {
   const [ecoCoins, setEcoCoins] = useState(0)
   const [totalScans, setTotalScans] = useState(0)
   const [recentScans, setRecentScans] = useState([])
+  const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(false)
+  const [language, setLanguage] = useState('en')
   const subs = useRef([])
 
   // Load persisted user from localStorage
@@ -20,14 +23,21 @@ export function AppProvider({ children }) {
       setUser(u)
       setEcoCoins(u.eco_coins || 0)
       setTotalScans(u.total_scans || 0)
+      setLanguage(u.language || 'en')
       subscribeRealtime(u.uid)
     }
     loadBinData()
+    fetchLeaderboard()
   }, [])
 
   const loadBinData = async () => {
     const { data } = await supabase.from('bins').select('*').eq('id', 'main_bin').single()
     if (data) setBinData(data)
+  }
+
+  const fetchLeaderboard = async () => {
+    const { data } = await supabase.from('users').select('name, eco_coins, level, phone').order('eco_coins', { ascending: false }).limit(5)
+    if (data) setLeaderboard(data)
   }
 
   const subscribeRealtime = (uid) => {
@@ -40,10 +50,19 @@ export function AppProvider({ children }) {
     // Real-time scans
     const scanSub = supabase.channel('web-scans-' + uid)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'scans', filter: `user_id=eq.${uid}` },
-        () => fetchScans(uid))
+        () => {
+          fetchScans(uid)
+          fetchLeaderboard()
+        })
       .subscribe()
 
-    subs.current = [binSub, scanSub]
+    // Real-time leaderboard (all users)
+    const boardSub = supabase.channel('web-leaderboard')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' },
+        () => fetchLeaderboard())
+      .subscribe()
+
+    subs.current = [binSub, scanSub, boardSub]
     fetchScans(uid)
   }
 
@@ -61,6 +80,7 @@ export function AppProvider({ children }) {
     if (!userData || userData.password !== password) { setLoading(false); throw new Error('Incorrect password') }
     localStorage.setItem('sb_user', JSON.stringify(userData))
     setUser(userData); setEcoCoins(userData.eco_coins || 0); setTotalScans(userData.total_scans || 0)
+    setLanguage(userData.language || 'en')
     subscribeRealtime(userData.uid)
     setLoading(false)
     return userData
@@ -69,12 +89,18 @@ export function AppProvider({ children }) {
   const register = async (name, email, password) => {
     setLoading(true)
     const uid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    const profileData = { uid, name, email, password, phone: '', state: '', city: '', pincode: '', eco_coins: 0, total_scans: 0, total_eco_coins_earned: 0, co2_saved: 0, level: 1, language: 'en' }
+    const profileData = { 
+      uid, name, email, password, 
+      phone: '', state: '', city: '', pincode: '', 
+      dob: '', language: 'en',
+      eco_coins: 0, total_scans: 0, total_eco_coins_earned: 0, 
+      co2_saved: 0, level: 1 
+    }
     const { error } = await supabase.from('users').insert(profileData)
     if (error) { setLoading(false); throw new Error(error.message) }
     await supabase.from('user_emails').insert({ email_key: email.replace(/[.@]/g, '_'), uid, email })
     localStorage.setItem('sb_user', JSON.stringify(profileData))
-    setUser(profileData); setEcoCoins(0); setTotalScans(0)
+    setUser(profileData); setEcoCoins(0); setTotalScans(0); setLanguage('en')
     subscribeRealtime(uid)
     setLoading(false)
     return profileData
@@ -112,8 +138,24 @@ export function AppProvider({ children }) {
     setUser(updated); setEcoCoins(newCoins)
   }
 
+  const changeLanguage = async (newLang) => {
+    setLanguage(newLang)
+    if (user?.uid) {
+      await supabase.from('users').update({ language: newLang }).eq('uid', user.uid)
+      const updated = { ...user, language: newLang }
+      localStorage.setItem('sb_user', JSON.stringify(updated))
+      setUser(updated)
+    }
+  }
+
+  const translate = (key) => t(language, key)
+
   return (
-    <AppContext.Provider value={{ user, binData, ecoCoins, totalScans, recentScans, loading, login, register, logout, addEcoCoins, saveScan, redeemCoins }}>
+    <AppContext.Provider value={{ 
+      user, setUser, binData, ecoCoins, totalScans, recentScans, leaderboard, 
+      loading, language, changeLanguage, t: translate,
+      login, register, logout, addEcoCoins, saveScan, redeemCoins 
+    }}>
       {children}
     </AppContext.Provider>
   )

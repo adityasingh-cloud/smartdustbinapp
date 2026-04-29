@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useApp } from '../context/AppContext'
 
 const tabs = [
-  { id: 'dashboard', icon: '⬡', label: 'Home' },
-  { id: 'map',       icon: '◎', label: 'Map'  },
-  { id: 'camera',    icon: '◉', label: 'Scan', isFab: true },
-  { id: 'rewards',   icon: '◆', label: 'Coins' },
-  { id: 'profile',   icon: '◈', label: 'Me'   },
+  { id: 'dashboard', icon: '⬡', label: 'home' },
+  { id: 'map',       icon: '◎', label: 'map'  },
+  { id: 'camera',    icon: '◉', label: 'camera', isFab: true },
+  { id: 'rewards',   icon: '◆', label: 'coins' },
+  { id: 'profile',   icon: '◈', label: 'me'   },
 ]
 
 export default function BottomNav({ active, onChange }) {
+  const { t } = useApp()
+  
   return (
     <nav className="bottom-nav">
       {tabs.map(tab => {
@@ -18,7 +20,7 @@ export default function BottomNav({ active, onChange }) {
               key={tab.id}
               className={`nav-fab ${active === tab.id ? 'active' : ''}`}
               onClick={() => onChange(tab.id)}
-              title="Scan"
+              title={t(tab.label)}
             >
               📷
             </button>
@@ -31,7 +33,7 @@ export default function BottomNav({ active, onChange }) {
             onClick={() => onChange(tab.id)}
           >
             <span className="nav-icon">{tab.icon}</span>
-            <span className="nav-label">{tab.label}</span>
+            <span className="nav-label">{t(tab.label)}</span>
           </button>
         )
       })}
