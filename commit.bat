@@ -1,2 +1,3 @@
-git add -A
-git commit -m "feat: SmartBin initial release by Team Leavron"
+git add src/index.css
+git commit -m "fix: scroll enabled in all screens"
+git push origin main
