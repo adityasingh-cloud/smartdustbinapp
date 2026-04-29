@@ -3,8 +3,7 @@ import { useApp } from '../context/AppContext';
 import { uploadToCloudinary } from '../utils/cloudinary';
 
 export default function FaceIDScreen({ onClose, onSuccess }) {
-  const { t, user, setUser, theme } = React.useContext(require('../context/AppContext').AppContext); // Using raw context if needed or useApp
-  const { updateUserProfile } = useApp();
+  const { t, user, setUser, theme, updateUserProfile } = useApp();
   const [phase, setPhase] = useState('idle'); // idle | scanning | verifying | uploading | done | error
   const [statusMsg, setStatusMsg] = useState('Position your face in the frame');
   const [faceDetected, setFaceDetected] = useState(false);

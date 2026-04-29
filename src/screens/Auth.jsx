@@ -66,7 +66,7 @@ export default function Auth() {
 
         <div style={{ textAlign: 'center', marginBottom: 20, marginTop: 40 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, letterSpacing: 6, color: 'var(--text-light)' }}>
-            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span>
+            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.2</span>
           </div>
         </div>
 
