@@ -59,6 +59,7 @@ img { display: block; max-width: 100%; }
 .phone-shell {
   width: var(--phone-w);
   height: var(--phone-h);
+  max-height: 100dvh;
   background: var(--bg);
   border-radius: 44px;
   border: 2px solid #333330;
@@ -70,6 +71,7 @@ img { display: block; max-width: 100%; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  touch-action: pan-y;
 }
 
 /* Notch */
@@ -87,13 +89,15 @@ img { display: block; max-width: 100%; }
 /* ─── SCREEN CONTAINER ─── */
 .screen {
   flex: 1;
+  min-height: 0;           /* CRITICAL: allows flex child to shrink and scroll */
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 80px;
+  padding-bottom: 88px;
   padding-top: 44px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   position: relative;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
 }
 .screen::-webkit-scrollbar { display: none; }
 
