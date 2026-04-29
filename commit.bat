@@ -1,3 +1,3 @@
-git add src/index.css
-git commit -m "fix: scroll enabled in all screens"
+git add -A
+git commit -m "feat: migrate to Supabase, real Cloudinary creds"
 git push origin main

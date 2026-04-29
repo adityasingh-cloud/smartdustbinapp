@@ -4,15 +4,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db } from '../utils/firebase';
-import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { supabase } from '../utils/supabase';
 import { uploadToCloudinary } from '../utils/cloudinary';
 import { analyzeWasteImage } from '../utils/wasteAnalysis';
 import { useApp } from '../context/AppContext';
 
 const C = { bg:'#1A1A18', yellow:'#E8C547', orange:'#C4622D', white:'#F5F0E8', gray:'#2A2A28', card:'#252523', lightGray:'#888884', green:'#4A7C4E', blue:'#3A5A8C' };
 const catColors = { dry:C.yellow, wet:C.green, metal:C.blue, plastic:C.orange, ewaste:'#9B59B6', unknown:C.lightGray };
-const catIcons = { dry:'🌿', wet:'💧', metal:'⚙️', plastic:'♻️', ewaste:'💻', unknown:'🗑️' };
+const catIcons  = { dry:'🌿', wet:'💧', metal:'⚙️', plastic:'♻️', ewaste:'💻', unknown:'🗑️' };
 
 export default function CameraScreen() {
   const { t, user, addEcoCoins } = useApp();
@@ -37,21 +36,31 @@ export default function CameraScreen() {
   const processImage = async (uri) => {
     setUploading(true);
     let uploadedUrl = null;
-    try { const up = await uploadToCloudinary(uri); uploadedUrl = up.url; setCloudinaryUrl(uploadedUrl); } catch {}
+    try { const up = await uploadToCloudinary(uri); uploadedUrl = up.url; setCloudinaryUrl(uploadedUrl); } catch (e) { console.warn('Upload failed:', e.message); }
     setUploading(false); setAnalyzing(true);
     try {
       const analysis = await analyzeWasteImage(uri);
-      if (analysis.success) setResult({...analysis.data, imageUrl: uploadedUrl||uri});
-      else Alert.alert(t('error'), 'Analysis failed: '+analysis.error);
+      if (analysis.success) setResult({ ...analysis.data, imageUrl: uploadedUrl || uri });
+      else Alert.alert(t('error'), 'Analysis failed: ' + analysis.error);
     } catch { Alert.alert(t('error'), 'Analysis failed. Please try again.'); }
     setAnalyzing(false);
   };
 
   const saveResult = async () => {
-    if (!result||!user?.uid||saved) return;
+    if (!result || !user?.uid || saved) return;
     try {
-      await addDoc(collection(db,'scans'), { userId:user.uid, category:result.category, itemName:result.itemName, description:result.description, confidence:result.confidence, recyclable:result.recyclable, hazardous:result.hazardous, disposalTip:result.disposalTip, ecoCoinsEarned:result.ecoCoinsEarned, imageUrl:result.imageUrl||cloudinaryUrl||imageUri, timestamp:new Date() });
-      await updateDoc(doc(db,'users',user.uid), { totalScans:increment(1), co2Saved:increment(result.recyclable?0.1:0.02) });
+      await supabase.from('scans').insert({
+        user_id: user.uid, category: result.category, item_name: result.itemName,
+        description: result.description, confidence: result.confidence,
+        recyclable: result.recyclable, hazardous: result.hazardous,
+        disposal_tip: result.disposalTip, eco_coins_earned: result.ecoCoinsEarned,
+        image_url: result.imageUrl || cloudinaryUrl || imageUri,
+      });
+      const { data: cur } = await supabase.from('users').select('total_scans, co2_saved').eq('uid', user.uid).single();
+      await supabase.from('users').update({
+        total_scans: (cur?.total_scans || 0) + 1,
+        co2_saved: (cur?.co2_saved || 0) + (result.recyclable ? 0.1 : 0.02),
+      }).eq('uid', user.uid);
       await addEcoCoins(result.ecoCoinsEarned, `Scanned: ${result.itemName}`);
       setSaved(true); Alert.alert(t('success'), t('savedSuccess'));
     } catch { Alert.alert(t('error'), 'Failed to save. Check your connection.'); }
@@ -75,10 +84,10 @@ ${result.hazardous?`<p style="color:#FF9800;text-align:center">⚠️ HAZARDOUS 
 <p style="text-align:center;color:#888;font-size:11px">SmartBin by Team Leavron | AI-Powered Waste Management</p>
 </body></html>`;
     try {
-      const { uri } = await Print.printToFileAsync({ html, base64:false });
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType:'application/pdf', dialogTitle:'SmartBin Report' });
-      else Alert.alert(t('success'), 'PDF saved: '+uri);
-    } catch(err) { Alert.alert(t('error'), 'PDF failed: '+err.message); }
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'SmartBin Report' });
+      else Alert.alert(t('success'), 'PDF saved: ' + uri);
+    } catch (err) { Alert.alert(t('error'), 'PDF failed: ' + err.message); }
   };
 
   const resetScan = () => { setImageUri(null); setCloudinaryUrl(null); setResult(null); setSaved(false); };
@@ -88,7 +97,6 @@ ${result.hazardous?`<p style="color:#FF9800;text-align:center">⚠️ HAZARDOUS 
       <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={s.header}><Text style={s.headerTitle}>{t('scanWaste')}</Text><Text style={s.headerSub}>AI-powered waste classification</Text></View>
-
         {!imageUri ? (
           <View style={s.cameraPlaceholder}>
             <View style={s.scanRing}><View style={s.scanRingInner}><Text style={s.scanIcon}>📷</Text><Text style={s.tapText}>{t('tapToCapture')}</Text></View></View>
@@ -104,7 +112,6 @@ ${result.hazardous?`<p style="color:#FF9800;text-align:center">⚠️ HAZARDOUS 
             {(uploading||analyzing)&&<View style={s.analyzeOverlay}><ActivityIndicator size="large" color={C.yellow}/><Text style={s.analyzeText}>{uploading?t('uploadingImage'):t('analyzing')}</Text></View>}
           </View>
         )}
-
         {result&&!analyzing&&(
           <View style={s.resultContainer}>
             <LinearGradient colors={[(catColors[result.category]||C.lightGray)+'CC',C.card]} style={s.categoryBanner}>
@@ -112,23 +119,16 @@ ${result.hazardous?`<p style="color:#FF9800;text-align:center">⚠️ HAZARDOUS 
               <View><Text style={s.categoryLabel}>{t('category')}</Text><Text style={s.categoryValue}>{result.category?.toUpperCase()} WASTE</Text></View>
               <View style={s.confidenceBadge}><Text style={s.confidenceText}>{result.confidence}%</Text><Text style={s.confidenceLabel}>match</Text></View>
             </LinearGradient>
-
             <View style={s.infoCard}><Text style={s.infoCardTitle}>{result.itemName}</Text><Text style={s.infoCardDesc}>{result.description}</Text></View>
-
             <View style={s.badgesRow}>
               <View style={[s.badge,{backgroundColor:result.recyclable?'#1A3A1F':'#3A1A1A'}]}><Text style={[s.badgeText,{color:result.recyclable?'#4CAF50':'#E74C3C'}]}>{result.recyclable?`✓ ${t('recyclable')}`:`✗ ${t('notRecyclable')}`}</Text></View>
               {result.hazardous&&<View style={[s.badge,{backgroundColor:'#3A1A00'}]}><Text style={[s.badgeText,{color:'#FF9800'}]}>⚠️ {t('hazardous')}</Text></View>}
             </View>
-
             <View style={s.tipCard}><Text style={s.tipLabel}>💡 {t('disposalTip')}</Text><Text style={s.tipText}>{result.disposalTip}</Text></View>
             <View style={s.coinsCard}><Text style={s.coinsValue}>+{result.ecoCoinsEarned}</Text><Text style={s.coinsLabel}>{t('coinsEarned')}</Text></View>
-
             <View style={s.actionsRow}>
-              {!saved ? (
-                <TouchableOpacity style={s.saveBtn} onPress={saveResult}>
-                  <LinearGradient colors={[C.yellow,C.orange]} start={{x:0,y:0}} end={{x:1,y:0}} style={s.saveBtnGradient}><Text style={s.saveBtnText}>💾 {t('saveResult')}</Text></LinearGradient>
-                </TouchableOpacity>
-              ) : <View style={s.savedBadge}><Text style={s.savedBadgeText}>✓ Saved</Text></View>}
+              {!saved?<TouchableOpacity style={s.saveBtn} onPress={saveResult}><LinearGradient colors={[C.yellow,C.orange]} start={{x:0,y:0}} end={{x:1,y:0}} style={s.saveBtnGradient}><Text style={s.saveBtnText}>💾 {t('saveResult')}</Text></LinearGradient></TouchableOpacity>
+                :<View style={s.savedBadge}><Text style={s.savedBadgeText}>✓ Saved</Text></View>}
               <TouchableOpacity style={s.pdfBtn} onPress={generatePDF}><Text style={s.pdfBtnText}>📄 {t('downloadPDF')}</Text></TouchableOpacity>
             </View>
             <TouchableOpacity style={s.scanAgainBtn} onPress={resetScan}><Text style={s.scanAgainText}>🔄 {t('scanAgain')}</Text></TouchableOpacity>

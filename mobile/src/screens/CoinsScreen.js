@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db } from '../utils/firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../utils/supabase';
 import { useApp } from '../context/AppContext';
 
 const C = { bg:'#1A1A18', yellow:'#E8C547', orange:'#C4622D', white:'#F5F0E8', gray:'#2A2A28', card:'#252523', lightGray:'#888884', green:'#4A7C4E', blue:'#3A5A8C' };
@@ -23,30 +22,36 @@ export default function CoinsScreen() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    const unsubscribe = onSnapshot(query(collection(db,'transactions'), where('userId','==',user.uid), orderBy('timestamp','desc')), (snap) => {
-      setTransactions(snap.docs.map(d=>({id:d.id,...d.data()})));
-      setLoadingTxns(false);
-    }, () => setLoadingTxns(false));
-    return () => unsubscribe();
+    fetchTransactions();
+    const sub = supabase.channel('txns-' + user.uid)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `user_id=eq.${user.uid}` }, fetchTransactions)
+      .subscribe();
+    return () => sub.unsubscribe();
   }, [user?.uid]);
 
+  const fetchTransactions = async () => {
+    const { data } = await supabase.from('transactions').select('*').eq('user_id', user.uid).order('created_at', { ascending: false });
+    if (data) setTransactions(data);
+    setLoadingTxns(false);
+  };
+
   const handleRedeem = (reward) => {
-    if (ecoCoins < reward.cost) { Alert.alert(t('insufficientCoins'), `You need ${reward.cost-ecoCoins} more EcoCoins.`); return; }
+    if (ecoCoins < reward.cost) { Alert.alert(t('insufficientCoins'), `You need ${reward.cost - ecoCoins} more EcoCoins.`); return; }
     Alert.alert('🎁 Redeem Reward', `Redeem "${reward.name}" for ${reward.cost} EcoCoins?`, [
-      {text:t('cancel'),style:'cancel'},
-      {text:t('confirm'),onPress:async()=>{ try { await redeemEcoCoins(reward.cost,reward.name); Alert.alert('🎉',t('redeemSuccess')); } catch(err){ Alert.alert(t('error'),err.message); } }},
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('confirm'), onPress: async () => { try { await redeemEcoCoins(reward.cost, reward.name); Alert.alert('🎉', t('redeemSuccess')); } catch (err) { Alert.alert(t('error'), err.message); } } },
     ]);
   };
 
-  const formatTime = (ts) => { if (!ts) return ''; const d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); };
-  const totalEarned = userProfile?.totalEcoCoinsEarned||0;
+  const formatTime = (ts) => { if (!ts) return ''; const d = new Date(ts); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+  const totalEarned = userProfile?.total_eco_coins_earned || 0;
   const totalRedeemed = Math.max(0, totalEarned - ecoCoins);
 
   return (
     <View style={s.container}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={['#2A2800',C.bg]} style={s.header}>
+        <LinearGradient colors={['#2A2800', C.bg]} style={s.header}>
           <Text style={s.headerTitle}>{t('yourCoins')}</Text>
           <Text style={s.coinsDisplay}>{ecoCoins}</Text>
           <Text style={s.coinsSubtitle}>ECOCOINS</Text>
@@ -56,17 +61,12 @@ export default function CoinsScreen() {
             ))}
           </View>
         </LinearGradient>
-
-        <View style={s.howToCard}>
-          <Text style={s.howToTitle}>💡 {t('howToEarn')}</Text>
-          <Text style={s.howToText}>{t('scanAndEarn')} · Each correct scan = 5–50 coins</Text>
-        </View>
-
+        <View style={s.howToCard}><Text style={s.howToTitle}>💡 {t('howToEarn')}</Text><Text style={s.howToText}>{t('scanAndEarn')} · Each correct scan = 5–50 coins</Text></View>
         <View style={s.section}>
           <Text style={s.sectionTitle}>{t('rewardStore')}</Text>
           <View style={s.rewardGrid}>
             {REWARDS.map(reward=>(
-              <TouchableOpacity key={reward.id} style={[s.rewardCard,ecoCoins<reward.cost&&s.rewardCardDisabled]} onPress={()=>handleRedeem(reward)}>
+              <TouchableOpacity key={reward.id} style={[s.rewardCard, ecoCoins<reward.cost&&s.rewardCardDisabled]} onPress={()=>handleRedeem(reward)}>
                 <View style={[s.rewardIconBg,{backgroundColor:reward.color+'22'}]}><Text style={s.rewardIcon}>{reward.icon}</Text></View>
                 <Text style={s.rewardName}>{reward.name}</Text>
                 <Text style={s.rewardDesc}>{reward.description}</Text>
@@ -78,15 +78,14 @@ export default function CoinsScreen() {
             ))}
           </View>
         </View>
-
         <View style={s.section}>
           <Text style={s.sectionTitle}>{t('transactionHistory')}</Text>
-          {loadingTxns ? <ActivityIndicator color={C.yellow} style={{padding:20}}/>
-            : transactions.length===0 ? <View style={s.emptyCard}><Text style={s.emptyText}>{t('noTransactions')}</Text></View>
-            : transactions.map(txn=>(
+          {loadingTxns?<ActivityIndicator color={C.yellow} style={{padding:20}}/>
+            :transactions.length===0?<View style={s.emptyCard}><Text style={s.emptyText}>{t('noTransactions')}</Text></View>
+            :transactions.map(txn=>(
               <View key={txn.id} style={s.txnCard}>
                 <View style={[s.txnIconBg,{backgroundColor:txn.type==='earn'?'#1A3A1F':'#3A1A00'}]}><Text style={s.txnIcon}>{txn.type==='earn'?'↑':'↓'}</Text></View>
-                <View style={s.txnInfo}><Text style={s.txnReason}>{txn.reason}</Text><Text style={s.txnTime}>{formatTime(txn.timestamp)}</Text></View>
+                <View style={s.txnInfo}><Text style={s.txnReason}>{txn.reason}</Text><Text style={s.txnTime}>{formatTime(txn.created_at)}</Text></View>
                 <Text style={[s.txnAmount,{color:txn.type==='earn'?C.green:C.orange}]}>{txn.type==='earn'?'+':'-'}{txn.amount}</Text>
               </View>
             ))}
@@ -110,8 +109,7 @@ const s = StyleSheet.create({
   howToTitle:{color:C.yellow,fontSize:13,fontWeight:'700',marginBottom:4}, howToText:{color:C.white,fontSize:12,lineHeight:18},
   section:{padding:16,paddingBottom:0}, sectionTitle:{color:C.white,fontSize:16,fontWeight:'700',marginBottom:12,letterSpacing:1},
   rewardGrid:{gap:10},
-  rewardCard:{backgroundColor:C.card,borderRadius:14,padding:16,borderWidth:1,borderColor:'#333'},
-  rewardCardDisabled:{opacity:0.6},
+  rewardCard:{backgroundColor:C.card,borderRadius:14,padding:16,borderWidth:1,borderColor:'#333'}, rewardCardDisabled:{opacity:0.6},
   rewardIconBg:{width:48,height:48,borderRadius:24,alignItems:'center',justifyContent:'center',marginBottom:10}, rewardIcon:{fontSize:24},
   rewardName:{color:C.white,fontSize:15,fontWeight:'700',marginBottom:4}, rewardDesc:{color:C.lightGray,fontSize:12,lineHeight:16,marginBottom:10},
   rewardCostRow:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},

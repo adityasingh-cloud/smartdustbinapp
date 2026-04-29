@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db } from '../utils/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { supabase } from '../utils/supabase';
 import { useApp } from '../context/AppContext';
 import { LANGUAGES } from '../utils/translations';
 
@@ -18,28 +17,29 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
 
-  const generateUID = () => 'user_'+Date.now()+'_'+Math.random().toString(36).substr(2,9);
+  const generateUID = () => 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
   const handleAuth = async () => {
-    if (!email||!password) { Alert.alert(t('error'), 'Please fill all fields'); return; }
-    if (!isLogin&&password!==confirmPassword) { Alert.alert(t('error'), 'Passwords do not match'); return; }
+    if (!email || !password) { Alert.alert(t('error'), 'Please fill all fields'); return; }
+    if (!isLogin && password !== confirmPassword) { Alert.alert(t('error'), 'Passwords do not match'); return; }
     setLoading(true);
     try {
       if (isLogin) {
-        const snap = await getDoc(doc(db,'userEmails',email.replace(/[.@]/g,'_')));
-        if (!snap.exists()) { Alert.alert(t('error'), 'No account found with this email'); setLoading(false); return; }
-        const { uid } = snap.data();
-        const userSnap = await getDoc(doc(db,'users',uid));
-        if (!userSnap.exists()) throw new Error('User data not found');
-        const userData = userSnap.data();
-        if (userData.password!==password) { Alert.alert(t('error'), 'Incorrect password'); setLoading(false); return; }
-        await loginUser(uid, userData);
+        // Look up email key
+        const emailKey = email.replace(/[.@]/g, '_');
+        const { data: emailRow, error: emailErr } = await supabase.from('user_emails').select('uid').eq('email_key', emailKey).single();
+        if (emailErr || !emailRow) { Alert.alert(t('error'), 'No account found with this email'); setLoading(false); return; }
+        const { data: userData, error: userErr } = await supabase.from('users').select('*').eq('uid', emailRow.uid).single();
+        if (userErr || !userData) throw new Error('User data not found');
+        if (userData.password !== password) { Alert.alert(t('error'), 'Incorrect password'); setLoading(false); return; }
+        await loginUser(userData.uid, userData);
       } else {
         if (!name) { Alert.alert(t('error'), 'Please enter your name'); setLoading(false); return; }
         const uid = generateUID();
-        const profileData = { uid, name, email, password, phone:'', state:'', city:'', pincode:'', ecoCoins:0, totalScans:0, totalEcoCoinsEarned:0, co2Saved:0, level:1, createdAt:new Date().toISOString(), language:'en' };
-        await setDoc(doc(db,'users',uid), profileData);
-        await setDoc(doc(db,'userEmails',email.replace(/[.@]/g,'_')), { uid, email });
+        const profileData = { uid, name, email, password, phone: '', state: '', city: '', pincode: '', eco_coins: 0, total_scans: 0, total_eco_coins_earned: 0, co2_saved: 0, level: 1, language: 'en' };
+        const { error: insertErr } = await supabase.from('users').insert(profileData);
+        if (insertErr) throw new Error(insertErr.message);
+        await supabase.from('user_emails').insert({ email_key: email.replace(/[.@]/g, '_'), uid, email });
         await loginUser(uid, profileData);
       }
     } catch (error) { Alert.alert(t('error'), error.message); }
@@ -90,8 +90,7 @@ export default function AuthScreen() {
 }
 
 const s = StyleSheet.create({
-  container:{flex:1,backgroundColor:C.bg},
-  scroll:{flexGrow:1,padding:24,paddingTop:60},
+  container:{flex:1,backgroundColor:C.bg}, scroll:{flexGrow:1,padding:24,paddingTop:60},
   langBtn:{alignSelf:'flex-end',backgroundColor:C.gray,paddingHorizontal:14,paddingVertical:8,borderRadius:20,marginBottom:8},
   langBtnText:{color:C.white,fontSize:13},
   langPicker:{backgroundColor:C.gray,borderRadius:12,marginBottom:16,overflow:'hidden'},
