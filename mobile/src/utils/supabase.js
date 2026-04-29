@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// ⚠️ Replace with your Supabase project URL and anon key
-// Get these from: https://supabase.com/dashboard → your project → Settings → API
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';       // e.g. https://xxxx.supabase.co
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// Supabase project: Smartbin
+const SUPABASE_URL = 'https://ahlqtpuosntsphzdyczl.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_wkHTOPFXyGDL8g-8j9oYcA_oG-owhhX';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
