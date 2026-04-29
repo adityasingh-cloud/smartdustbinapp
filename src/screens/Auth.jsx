@@ -12,7 +12,6 @@ export default function Auth() {
   const [state, setState] = useState('')
   const [city, setCity] = useState('')
   const [pincode, setPincode] = useState('')
-  const [dob, setDob] = useState('')
   const [error, setError] = useState('')
   
   const [showFaceScan, setShowFaceScan] = useState(false)
@@ -26,7 +25,8 @@ export default function Auth() {
       if (isLogin) {
         await login(email, password)
       } else {
-        await register(name, email, password, { phone, state, city, pincode, dob })
+        // DOB removed because column does not exist in Supabase
+        await register(name, email, password, { phone, state, city, pincode })
       }
     } catch (err) {
       setError(err.message)
@@ -66,7 +66,7 @@ export default function Auth() {
 
         <div style={{ textAlign: 'center', marginBottom: 20, marginTop: 40 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, letterSpacing: 6, color: 'var(--text-light)' }}>
-            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.2</span>
+            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.3</span>
           </div>
         </div>
 
@@ -96,15 +96,9 @@ export default function Auth() {
                     <input type="text" value={city} onChange={(e) => setCity(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="City" required />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Pincode</label>
-                    <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="110001" required />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>DOB</label>
-                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} required />
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Pincode</label>
+                  <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="110001" required />
                 </div>
               </>
             )}
