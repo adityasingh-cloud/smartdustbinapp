@@ -106,8 +106,8 @@ export function AppProvider({ children }) {
     const profileData = { 
       uid, name, email, password, 
       language: 'en',
-      eco_coins: 0, total_scans: 0, total_eco_coins_earned: 0, 
-      co2_saved: 0, level: 1 
+      eco_coins: 0, total_scans: 0, 
+      level: 1 
     }
     const { error } = await supabase.from('users').insert(profileData)
     if (error) { setLoading(false); throw new Error(error.message) }
