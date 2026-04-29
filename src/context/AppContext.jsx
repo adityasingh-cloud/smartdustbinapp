@@ -139,9 +139,7 @@ export function AppProvider({ children }) {
     const { error } = await supabase.from('users').insert(profileData)
     if (error) { setLoading(false); throw new Error(error.message) }
     await supabase.from('user_emails').insert({ email_key: email.replace(/[.@]/g, '_'), uid, email })
-    localStorage.setItem('sb_user', JSON.stringify(profileData))
-    setUser(profileData); setEcoCoins(0); setTotalScans(0); setLanguage('en')
-    subscribeRealtime(uid)
+    // We don't set user yet to allow Face ID setup to happen on the Auth screen
     setLoading(false)
     return profileData
   }

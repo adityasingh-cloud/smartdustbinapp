@@ -17,6 +17,7 @@ export default function Auth() {
   const [error, setError] = useState('')
   
   const [showFaceScan, setShowFaceScan] = useState(false)
+  const [pendingUser, setPendingUser] = useState(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -26,6 +27,7 @@ export default function Auth() {
         await login(email, password)
       } else {
         const newUser = await register(name, email, password, { phone, state, city, pincode, dob })
+        setPendingUser(newUser)
         setShowFaceScan(true)
       }
     } catch (err) {
@@ -34,6 +36,11 @@ export default function Auth() {
   }
 
   const handleFaceSuccess = (photoUrl) => {
+    if (pendingUser) {
+      const finalUser = { ...pendingUser, photo_url: photoUrl, face_id_enabled: true }
+      localStorage.setItem('sb_user', JSON.stringify(finalUser))
+      setUser(finalUser)
+    }
     setShowFaceScan(false)
   }
 
@@ -45,7 +52,7 @@ export default function Auth() {
 
         <div style={{ textAlign: 'center', marginBottom: 20, marginTop: 40 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, letterSpacing: 6, color: 'var(--text-light)' }}>
-            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.5</span>
+            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.8</span>
           </div>
         </div>
 
@@ -133,6 +140,7 @@ export default function Auth() {
           <FaceIDScreen 
             onClose={() => setShowFaceScan(false)} 
             onSuccess={handleFaceSuccess}
+            targetUid={pendingUser?.uid}
           />
         )}
       </div>

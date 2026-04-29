@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { uploadToCloudinary } from '../utils/cloudinary';
 import { supabase } from '../lib/supabase';
 
-export default function FaceIDScreen({ onClose, onSuccess }) {
+export default function FaceIDScreen({ onClose, onSuccess, targetUid }) {
   const { t, user, setUser, theme, updateUserProfile } = useApp();
   const [phase, setPhase] = useState('idle'); // idle | scanning | verifying | uploading | done | error
   const [statusMsg, setStatusMsg] = useState('Position your face in the frame');
@@ -71,13 +71,17 @@ export default function FaceIDScreen({ onClose, onSuccess }) {
       const uploaded = await uploadToCloudinary(dataUrl);
       
       // Update Supabase and local state
-      await updateUserProfile({ photo_url: uploaded.url, face_id_enabled: true })
-
+      const uid = targetUid || user?.uid;
+      if (!uid) throw new Error('No user ID found');
+      
+      const { error } = await supabase.from('users').update({ photo_url: uploaded.url, face_id_enabled: true }).eq('uid', uid);
       if (error) throw error;
 
-      const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
-      localStorage.setItem('sb_user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      if (user) {
+        const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
+        localStorage.setItem('sb_user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
 
       setPhase('done');
       setStatusMsg('Face ID registered successfully!');
