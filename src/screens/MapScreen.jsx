@@ -85,7 +85,11 @@ export default function MapScreen() {
         </div>
 
         {/* Directions CTA */}
-        <button className="scan-btn" style={{ marginTop: 20, height: 44, fontSize: 16 }}>
+        <button 
+          className="scan-btn" 
+          style={{ marginTop: 20, height: 44, fontSize: 16 }}
+          onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`, '_blank')}
+        >
           📍 {t('getDirections').toUpperCase()}
         </button>
       </div>

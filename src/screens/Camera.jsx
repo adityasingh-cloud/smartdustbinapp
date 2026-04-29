@@ -18,7 +18,7 @@ const DEMO_ITEMS = [
 ]
 
 export default function CameraScreen() {
-  const { saveScan, t } = useApp()
+  const { user, saveScan, t } = useApp()
   const videoRef = useRef(null)
   const fileInputRef = useRef(null)
   
@@ -53,11 +53,6 @@ export default function CameraScreen() {
   }
 
   const handleScan = async () => {
-    if (!stream) {
-      fileInputRef.current.click()
-      return
-    }
-
     setScanning(true)
     setDetected(null)
     setStatusText(t('analyzing'))
@@ -94,17 +89,52 @@ export default function CameraScreen() {
 
   const downloadPDF = () => {
     if (!lastItem) return
-    const doc = new jsPDF()
-    doc.setFontSize(22)
-    doc.text('SMARTBIN DISPOSAL REPORT', 20, 20)
-    doc.setFontSize(14)
-    doc.text(`Date: ${new Date().toLocaleString()}`, 20, 35)
-    doc.text(`Item: ${lastItem.name}`, 20, 45)
-    doc.text(`Category: ${lastItem.cat.toUpperCase()}`, 20, 55)
-    doc.text(`Points Earned: ${lastItem.pts} EcoCoins`, 20, 65)
-    doc.text(`Recyclable: ${lastItem.cat !== 'wet' ? 'Yes' : 'No'}`, 20, 75)
-    doc.text('Status: COMPLETED', 20, 85)
-    doc.save(`SmartBin_Report_${Date.now()}.pdf`)
+    try {
+      const doc = new jsPDF()
+      
+      // Header
+      doc.setFillColor(26, 26, 24)
+      doc.rect(0, 0, 210, 40, 'F')
+      doc.setTextColor(232, 197, 71)
+      doc.setFontSize(28)
+      doc.text('SMARTBIN', 20, 25)
+      doc.setFontSize(10)
+      doc.text(t('officialDisposalReport').toUpperCase(), 20, 32)
+      
+      // Divider
+      doc.setDrawColor(232, 197, 71)
+      doc.setLineWidth(1)
+      doc.line(20, 50, 190, 50)
+      
+      // User Info
+      doc.setTextColor(50, 50, 50)
+      doc.setFontSize(12)
+      doc.text(`${t('user')}: ${user?.name || 'Guest User'}`, 20, 65)
+      doc.text(`${t('date')}: ${new Date().toLocaleString()}`, 20, 72)
+      doc.text(`${t('reportId')}: SB-${Date.now().toString().slice(-6)}`, 20, 79)
+      
+      // Scan Details
+      doc.setFillColor(245, 240, 232)
+      doc.rect(20, 90, 170, 60, 'F')
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(14)
+      doc.text(t('disposalDetails').toUpperCase(), 30, 105)
+      doc.setFontSize(11)
+      doc.text(`${t('itemDetected')}: ${lastItem.name}`, 30, 115)
+      doc.text(`${t('wasteCategory')}: ${lastItem.cat.toUpperCase()}`, 30, 122)
+      doc.text(`${t('pointsEarned')}: ${lastItem.pts} EcoCoins`, 30, 129)
+      doc.text(`${t('recyclableStatus')}: ${lastItem.cat !== 'wet' ? 'YES' : 'NO'}`, 30, 136)
+      
+      // Footer
+      doc.setFontSize(9)
+      doc.setTextColor(150, 150, 150)
+      doc.text(t('aiGeneratedReport'), 20, 170)
+      doc.text(t('thankYouPlanet'), 20, 175)
+      
+      doc.save(`SmartBin_Report_${Date.now()}.pdf`)
+    } catch (err) {
+      alert('PDF generation failed: ' + err.message)
+    }
   }
 
   return (
@@ -192,9 +222,16 @@ export default function CameraScreen() {
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ width: '100%', padding: '0 20px', marginBottom: 20 }}>
-        <button className="scan-btn" onClick={handleScan} disabled={scanning}>
-          {scanning ? t('analyzing') : stream ? t('scanWaste') : t('openCamera')}
+      <div style={{ width: '100%', padding: '0 20px', marginBottom: 20, display: 'flex', gap: 10 }}>
+        <button 
+          className="scan-btn" 
+          onClick={() => fileInputRef.current.click()} 
+          style={{ flex: 1, background: 'var(--gray)', border: '1px solid var(--border)' }}
+        >
+          📷 {t('openCamera')}
+        </button>
+        <button className="scan-btn" onClick={handleScan} disabled={scanning} style={{ flex: 1.5 }}>
+          {scanning ? t('analyzing') : t('scanWaste')}
         </button>
       </div>
     </div>

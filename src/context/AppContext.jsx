@@ -13,11 +13,18 @@ export function AppProvider({ children }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(false)
   const [language, setLanguage] = useState('en')
+  const [theme, setTheme] = useState('dark')
+  const [faceVerified, setFaceVerified] = useState(false)
   const subs = useRef([])
 
-  // Load persisted user from localStorage
+  // Load persisted user and theme from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('sb_user')
+    const savedTheme = localStorage.getItem('sb_theme') || 'dark'
+    
+    setTheme(savedTheme)
+    document.body.className = savedTheme
+
     if (saved) {
       const u = JSON.parse(saved)
       setUser(u)
@@ -30,13 +37,20 @@ export function AppProvider({ children }) {
     fetchLeaderboard()
   }, [])
 
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(newTheme)
+    localStorage.setItem('sb_theme', newTheme)
+    document.body.className = newTheme
+  }
+
   const loadBinData = async () => {
     const { data } = await supabase.from('bins').select('*').eq('id', 'main_bin').single()
     if (data) setBinData(data)
   }
 
   const fetchLeaderboard = async () => {
-    const { data } = await supabase.from('users').select('name, eco_coins, level, phone').order('eco_coins', { ascending: false }).limit(5)
+    const { data } = await supabase.from('users').select('uid, name, eco_coins, level, phone').order('eco_coins', { ascending: false }).limit(5)
     if (data) setLeaderboard(data)
   }
 
@@ -109,7 +123,7 @@ export function AppProvider({ children }) {
   const logout = () => {
     subs.current.forEach(s => s?.unsubscribe?.())
     localStorage.removeItem('sb_user')
-    setUser(null); setEcoCoins(0); setTotalScans(0); setRecentScans([])
+    setUser(null); setEcoCoins(0); setTotalScans(0); setRecentScans([]); setFaceVerified(false)
   }
 
   const addEcoCoins = async (amount, reason) => {
@@ -154,6 +168,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{ 
       user, setUser, binData, ecoCoins, totalScans, recentScans, leaderboard, 
       loading, language, changeLanguage, t: translate,
+      theme, toggleTheme, faceVerified, setFaceVerified,
       login, register, logout, addEcoCoins, saveScan, redeemCoins 
     }}>
       {children}

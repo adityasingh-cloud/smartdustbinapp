@@ -5,20 +5,18 @@ import { supabase } from '../lib/supabase'
 const CHART_DATA = [28, 45, 32, 67, 55, 80, 42]
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-const SETTINGS = [
-  { icon: '🔔', label: 'notifications',     val: true  },
-  { icon: '🔒', label: 'Face ID Login',      val: true  },
-  { icon: '🌙', label: 'darkMode',          val: true  },
-  { icon: '📍', label: 'Location Services', val: false },
-]
-
 export default function Profile() {
-  const { user, ecoCoins, totalScans, logout, redeemCoins, setUser, t } = useApp()
+  const { 
+    user, ecoCoins, totalScans, recentScans, logout, setUser, t, 
+    theme, toggleTheme, faceVerified, setFaceVerified 
+  } = useApp()
   const avatarRef = useRef(null)
   const fileInputRef = useRef(null)
-  const [toggles, setToggles] = useState(SETTINGS.map(s => s.val))
+  const videoRef = useRef(null)
   
   const [isEditing, setIsEditing] = useState(false)
+  const [showFaceScan, setShowFaceScan] = useState(false)
+  const [faceScanning, setFaceScanning] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -29,6 +27,13 @@ export default function Profile() {
     dob: user?.dob || ''
   })
   const [uploading, setUploading] = useState(false)
+
+  const SETTINGS = [
+    { icon: '🔔', label: 'notifications',     val: true,  action: null },
+    { icon: '🔒', label: 'Face ID Login',      val: faceVerified, action: () => setShowFaceScan(true) },
+    { icon: '🌙', label: 'darkMode',          val: theme === 'dark', action: toggleTheme },
+    { icon: '📍', label: 'Location Services', val: false, action: null },
+  ]
 
   useEffect(() => {
     setFormData({
@@ -42,44 +47,41 @@ export default function Profile() {
     })
   }, [user])
 
-  // 3D parallax tilt
-  useEffect(() => {
-    const el = avatarRef.current
-    if (!el) return
-    const handleMove = (e) => {
-      const rect = el.getBoundingClientRect()
-      const cx = rect.left + rect.width / 2
-      const cy = rect.top + rect.height / 2
-      const x = ((e.clientX ?? e.touches?.[0]?.clientX ?? cx) - cx) / (rect.width / 2)
-      const y = ((e.clientY ?? e.touches?.[0]?.clientY ?? cy) - cy) / (rect.height / 2)
-      const img = el.querySelector('.avatar-img')
-      if (img) img.style.transform = `rotateY(${x * 15}deg) rotateX(${-y * 15}deg)`
-    }
-    const handleLeave = () => {
-      const img = el.querySelector('.avatar-img')
-      if (img) img.style.transform = 'rotateY(0deg) rotateX(0deg)'
-    }
-    el.addEventListener('mousemove', handleMove)
-    el.addEventListener('touchmove', handleMove)
-    el.addEventListener('mouseleave', handleLeave)
-    return () => {
-      el.removeEventListener('mousemove', handleMove)
-      el.removeEventListener('touchmove', handleMove)
-      el.removeEventListener('mouseleave', handleLeave)
-    }
-  }, [])
-
   const handleSaveProfile = async () => {
+    if (!user?.uid) return
     try {
-      const { error } = await supabase.from('users').update(formData).eq('uid', user.uid)
+      console.log('Saving profile for:', user.uid, formData)
+      const { data, error } = await supabase.from('users').update(formData).eq('uid', user.uid).select().single()
       if (error) throw error
+      
       const updated = { ...user, ...formData }
       localStorage.setItem('sb_user', JSON.stringify(updated))
       setUser(updated)
       setIsEditing(false)
       alert(t('profileUpdated'))
     } catch (err) {
+      console.error('Update failed:', err)
       alert(t('updateFailed') + ': ' + err.message)
+    }
+  }
+
+  const startFaceScan = async () => {
+    setFaceScanning(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      if (videoRef.current) videoRef.current.srcObject = stream
+      
+      setTimeout(() => {
+        setFaceVerified(true)
+        setFaceScanning(false)
+        setShowFaceScan(false)
+        stream.getTracks().forEach(t => t.stop())
+        alert('Face ID Verified Successfully!')
+      }, 3000)
+    } catch (err) {
+      alert('Face ID failed: ' + err.message)
+      setFaceScanning(false)
+      setShowFaceScan(false)
     }
   }
 
@@ -89,13 +91,13 @@ export default function Profile() {
     setUploading(true)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('upload_preset', 'Smartbin')
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('upload_preset', 'Smartbin')
       
       const res = await fetch('https://api.cloudinary.com/v1_1/dc8suuh6h/image/upload', {
         method: 'POST',
-        body: formData
+        body: fd
       })
       const data = await res.json()
       
@@ -265,8 +267,8 @@ export default function Profile() {
                 <span style={{ fontSize: 13, fontWeight: 500 }}>{t(s.label) || s.label}</span>
               </div>
               <div
-                className={`toggle ${toggles[i] ? 'on' : ''}`}
-                onClick={() => setToggles(t => t.map((v, idx) => idx === i ? !v : v))}
+                className={`toggle ${s.val ? 'on' : ''}`}
+                onClick={() => s.action?.()}
               >
                 <div className="toggle-thumb" />
               </div>
@@ -274,6 +276,28 @@ export default function Profile() {
           ))}
         </div>
       </div>
+
+      {/* Face Scan Modal */}
+      {showFaceScan && (
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '80%', maxWidth: 300, textAlign: 'center', padding: 20 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 16 }}>FACE ID SCAN</div>
+            <div style={{ position: 'relative', width: 200, height: 200, margin: '0 auto', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--yellow)' }}>
+              <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {faceScanning && <div className="scan-sweep" />}
+            </div>
+            <div style={{ marginTop: 20, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+              {faceScanning ? 'SCANNING BIOMETRICS...' : 'POSITION FACE IN CIRCLE'}
+            </div>
+            {!faceScanning && (
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button className="scan-btn" onClick={startFaceScan} style={{ height: 36, fontSize: 14 }}>START</button>
+                <button className="icon-btn" onClick={() => setShowFaceScan(false)} style={{ fontSize: 14 }}>CANCEL</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Logout */}
       <div className="px" style={{ marginBottom: 32 }}>
