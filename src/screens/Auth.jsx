@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useApp } from '../context/AppContext'
 import ParticlesBg from '../components/ParticlesBg'
+import FaceIDScreen from './FaceIDScreen'
 
 export default function Auth() {
   const { login, register, loading, setUser } = useApp()
@@ -16,8 +17,6 @@ export default function Auth() {
   const [error, setError] = useState('')
   
   const [showFaceScan, setShowFaceScan] = useState(false)
-  const [faceScanning, setFaceScanning] = useState(false)
-  const videoRef = useRef(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -26,36 +25,16 @@ export default function Auth() {
       if (isLogin) {
         await login(email, password)
       } else {
-        await register(name, email, password, { phone, state, city, pincode, dob })
+        const newUser = await register(name, email, password, { phone, state, city, pincode, dob })
+        setShowFaceScan(true)
       }
     } catch (err) {
       setError(err.message)
     }
   }
 
-  const startFaceScan = async () => {
-    setFaceScanning(true)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      if (videoRef.current) videoRef.current.srcObject = stream
-      
-      setTimeout(() => {
-        setFaceScanning(false)
-        setShowFaceScan(false)
-        stream.getTracks().forEach(t => t.stop())
-        
-        const saved = localStorage.getItem('sb_user')
-        if (saved) {
-          setUser(JSON.parse(saved))
-        } else {
-          alert('Face ID Verified! Please sign in with email once to link your face.')
-        }
-      }, 3000)
-    } catch (err) {
-      alert('Face ID failed: ' + err.message)
-      setFaceScanning(false)
-      setShowFaceScan(false)
-    }
+  const handleFaceSuccess = (photoUrl) => {
+    setShowFaceScan(false)
   }
 
   return (
@@ -66,7 +45,7 @@ export default function Auth() {
 
         <div style={{ textAlign: 'center', marginBottom: 20, marginTop: 40 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, letterSpacing: 6, color: 'var(--text-light)' }}>
-            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.4</span>
+            SMART<span style={{ background: 'var(--yellow)', color: 'var(--bg)', padding: '0 8px' }}>BIN</span> <span style={{ fontSize: 10, opacity: 0.5 }}>v2.5</span>
           </div>
         </div>
 
@@ -151,24 +130,10 @@ export default function Auth() {
         </div>
 
         {showFaceScan && (
-          <div className="modal-overlay">
-            <div className="card" style={{ width: '80%', maxWidth: 300, textAlign: 'center', padding: 20 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 16 }}>FACE ID SCAN</div>
-              <div style={{ position: 'relative', width: 200, height: 200, margin: '0 auto', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--yellow)' }}>
-                <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                {faceScanning && <div className="scan-sweep" />}
-              </div>
-              <div style={{ marginTop: 20, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                {faceScanning ? 'SCANNING BIOMETRICS...' : 'POSITION FACE IN CIRCLE'}
-              </div>
-              {!faceScanning && (
-                <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                  <button className="scan-btn" onClick={startFaceScan} style={{ height: 36, fontSize: 14 }}>START</button>
-                  <button className="icon-btn" onClick={() => setShowFaceScan(false)} style={{ fontSize: 14 }}>CANCEL</button>
-                </div>
-              )}
-            </div>
-          </div>
+          <FaceIDScreen 
+            onClose={() => setShowFaceScan(false)} 
+            onSuccess={handleFaceSuccess}
+          />
         )}
       </div>
     </div>

@@ -81,9 +81,9 @@ export default function Profile() {
       const data = await res.json()
       
       if (data.secure_url) {
-        const { error } = await supabase.from('users').update({ phone: data.secure_url }).eq('uid', user.uid) 
+        const { error } = await supabase.from('users').update({ photo_url: data.secure_url }).eq('uid', user.uid) 
         if (error) throw error
-        const updated = { ...user, phone: data.secure_url }
+        const updated = { ...user, photo_url: data.secure_url }
         localStorage.setItem('sb_user', JSON.stringify(updated))
         setUser(updated)
       }
@@ -118,7 +118,7 @@ export default function Profile() {
         >
           <div className="avatar-ring" />
           <div className="avatar-img" style={{ overflow: 'hidden' }}>
-            {uploading ? '⏳' : user?.phone?.startsWith('http') ? <img src={user.phone} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.charAt(0).toUpperCase() || '👤')}
+            {uploading ? '⏳' : user?.photo_url?.startsWith('http') ? <img src={user.photo_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.charAt(0).toUpperCase() || '👤')}
           </div>
           <div style={{ 
             position: 'absolute', bottom: 0, right: 0, 

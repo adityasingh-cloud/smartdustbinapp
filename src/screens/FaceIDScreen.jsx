@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { uploadToCloudinary } from '../utils/cloudinary';
+import { supabase } from '../lib/supabase';
 
 export default function FaceIDScreen({ onClose, onSuccess }) {
   const { t, user, setUser, theme, updateUserProfile } = useApp();
@@ -69,11 +70,8 @@ export default function FaceIDScreen({ onClose, onSuccess }) {
       // Cloudinary upload
       const uploaded = await uploadToCloudinary(dataUrl);
       
-      // Update Supabase
-      const { error } = await require('../lib/supabase').supabase
-        .from('users')
-        .update({ photo_url: uploaded.url, face_id_enabled: true })
-        .eq('uid', user.uid);
+      // Update Supabase and local state
+      await updateUserProfile({ photo_url: uploaded.url, face_id_enabled: true })
 
       if (error) throw error;
 
