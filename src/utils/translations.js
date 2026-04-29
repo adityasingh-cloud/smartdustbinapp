@@ -126,3 +126,8 @@ export const LANGUAGES = [
   { code: 'ml', name: 'മലയാളം' },
   { code: 'mr', name: 'मराठी' },
 ]
+
+export const t = (lang, key) => {
+  if (!translations[lang]) lang = 'en';
+  return translations[lang][key] || translations['en'][key] || key;
+}

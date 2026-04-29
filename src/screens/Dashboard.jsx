@@ -1,5 +1,6 @@
 import { useApp } from '../context/AppContext'
 import { LANGUAGES } from '../utils/translations'
+import BinModel3D from '../components/BinModel3D'
 
 const NumAnim = ({ val }) => {
   return <>{val.toLocaleString()}</>
@@ -51,6 +52,13 @@ export default function Dashboard({ onBell, onSettings }) {
             {t('ecoWarrior')} · LVL {user?.level || 1} 
             <span style={{ marginLeft: 'auto' }}>→</span>
           </div>
+        </div>
+      </div>
+
+      {/* 3D Model */}
+      <div className="px card-enter" style={{ marginTop: 16 }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', height: 220, background: 'transparent', border: 'none' }}>
+          <BinModel3D />
         </div>
       </div>
 

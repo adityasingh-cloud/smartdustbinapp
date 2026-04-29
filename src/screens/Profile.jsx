@@ -27,10 +27,16 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false)
 
   const SETTINGS = [
-    { icon: '🔔', label: 'notifications',     val: true,  action: null },
-    { icon: '🔒', label: 'Face ID Login',      val: faceVerified, action: () => setShowFaceScan(true) },
-    { icon: '🌙', label: 'darkMode',          val: theme === 'dark', action: toggleTheme },
-    { icon: '📍', label: 'Location Services', val: false, action: null },
+    { icon: '  ', label: 'notifications',     val: true,  action: null },
+    { icon: '  ', label: 'Face ID Login',      val: faceVerified, action: () => setShowFaceScan(true) },
+    { icon: '  ', label: 'Face Recognition Debug', val: false, action: () => { 
+      // This is a hacky way to change tab from within a component that doesn't have setActiveTab
+      // But AppContent uses useApp, so I should probably put activeTab in AppContext if I want to change it easily.
+      // For now, I'll just alert the user or use a window event.
+      window.dispatchEvent(new CustomEvent('changeTab', { detail: 'face-debug' }));
+    }},
+    { icon: '  ', label: 'darkMode',          val: theme === 'dark', action: toggleTheme },
+    { icon: '  ', label: 'Location Services', val: false, action: null },
   ]
 
   useEffect(() => {
@@ -104,7 +110,7 @@ export default function Profile() {
           onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
           style={{ color: isEditing ? 'var(--green)' : 'inherit' }}
         >
-          {isEditing ? '✅' : '✏'}
+          {isEditing ? ' ' : ' '}
         </button>
       </div>
 
@@ -118,14 +124,14 @@ export default function Profile() {
         >
           <div className="avatar-ring" />
           <div className="avatar-img" style={{ overflow: 'hidden' }}>
-            {uploading ? '⏳' : user?.photo_url?.startsWith('http') ? <img src={user.photo_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.charAt(0).toUpperCase() || '👤')}
+            {uploading ? '...' : user?.photo_url?.startsWith('http') ? <img src={user.photo_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.charAt(0).toUpperCase() || '?')}
           </div>
           <div style={{ 
             position: 'absolute', bottom: 0, right: 0, 
             background: 'var(--yellow)', borderRadius: '50%', width: 28, height: 28,
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
             border: '2px solid var(--bg)', color: 'var(--bg)'
-          }}>📷</div>
+          }}>IMG</div>
         </div>
         
         <input 
@@ -141,7 +147,7 @@ export default function Profile() {
             {user?.name?.toUpperCase() || 'GUEST USER'}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>
-            {t('ecoWarrior')} · {t('level')} {user?.level || 1}
+            {t('ecoWarrior')}   {t('level')} {user?.level || 1}
           </div>
         </div>
       </div>
@@ -282,7 +288,7 @@ export default function Profile() {
             cursor: 'pointer', transition: 'all 0.2s',
           }}
         >
-          ↩ {t('logout')}
+            {t('logout')}
         </button>
       </div>
     </div>

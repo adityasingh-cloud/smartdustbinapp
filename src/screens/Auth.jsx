@@ -17,6 +17,7 @@ export default function Auth() {
   const [error, setError] = useState('')
   
   const [showFaceScan, setShowFaceScan] = useState(false)
+  const [faceMode, setFaceMode] = useState('setup') // 'setup' | 'login'
   const [pendingUser, setPendingUser] = useState(null)
 
   const handleSubmit = async (e) => {
@@ -28,6 +29,7 @@ export default function Auth() {
       } else {
         const newUser = await register(name, email, password, { phone, state, city, pincode, dob })
         setPendingUser(newUser)
+        setFaceMode('setup')
         setShowFaceScan(true)
       }
     } catch (err) {
@@ -102,7 +104,7 @@ export default function Auth() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="••••••••" required />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="        " required />
             </div>
 
             {error && <div style={{ color: '#E74C3C', fontSize: 11, fontFamily: 'var(--font-mono)', textAlign: 'center' }}>{error}</div>}
@@ -112,9 +114,11 @@ export default function Auth() {
             </button>
           </form>
 
-          {isLogin && (
             <button
-              onClick={() => setShowFaceScan(true)}
+              onClick={() => {
+                setFaceMode('login')
+                setShowFaceScan(true)
+              }}
               style={{ 
                 width: '100%', marginTop: 12, padding: '10px', 
                 background: 'transparent', border: '1px solid var(--yellow)', 
@@ -122,9 +126,8 @@ export default function Auth() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
               }}
             >
-              👤 SIGN IN WITH FACE ID
+              SIGN IN WITH FACE ID
             </button>
-          )}
 
           <div style={{ marginTop: 20, textAlign: 'center' }}>
             <button
@@ -138,6 +141,7 @@ export default function Auth() {
 
         {showFaceScan && (
           <FaceIDScreen 
+            mode={faceMode}
             onClose={() => setShowFaceScan(false)} 
             onSuccess={handleFaceSuccess}
             targetUid={pendingUser?.uid}

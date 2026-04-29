@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ParticlesBg from './components/ParticlesBg'
 import BottomNav from './components/BottomNav'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -9,17 +9,24 @@ import Alerts from './screens/Alerts'
 import MapScreen from './screens/MapScreen'
 import Rewards from './screens/Rewards'
 import AuthScreen from './screens/Auth'
+import FaceRecognitionPage from './screens/FaceRecognitionPage'
 import { AppProvider, useApp } from './context/AppContext'
 
 function AppContent() {
   const { user } = useApp()
   const [activeTab, setActiveTab] = useState('dashboard')
-
-  if (!user) {
-    return <AuthScreen />
-  }
+  
+  useEffect(() => {
+    const handleTabChange = (e) => setActiveTab(e.detail)
+    window.addEventListener('changeTab', handleTabChange)
+    return () => window.removeEventListener('changeTab', handleTabChange)
+  }, [])
 
   const renderScreen = () => {
+    if (!user) {
+      return <AuthScreen />
+    }
+
     switch (activeTab) {
       case 'dashboard': return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('profile')} />
       case 'camera':    return <CameraScreen key="camera" />
@@ -27,6 +34,7 @@ function AppContent() {
       case 'alerts':    return <Alerts key="alerts" onBack={() => setActiveTab('dashboard')} />
       case 'map':       return <MapScreen key="map" />
       case 'rewards':   return <Rewards key="rewards" />
+      case 'face-debug': return <FaceRecognitionPage key="face-debug" />
       default:          return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('profile')} />
     }
   }
@@ -47,7 +55,7 @@ function AppContent() {
         textTransform: 'uppercase', letterSpacing: 4, whiteSpace: 'nowrap',
         pointerEvents: 'none',
       }}>
-        SmartBin · AI Waste Management · Team Leavron
+        SmartBin | AI Waste Management | Team Leavron
       </div>
 
       {/* Phone shell */}
@@ -55,11 +63,11 @@ function AppContent() {
         <ParticlesBg />
         <div className="texture" style={{ zIndex: 0 }} />
 
-        <ErrorBoundary fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E8C547' }}>⚠ Reload to continue</div>}>
+        <ErrorBoundary fallback={<div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E8C547' }}>[!] Reload to continue</div>}>
           {renderScreen()}
         </ErrorBoundary>
 
-        <BottomNav active={activeTab} onChange={setActiveTab} />
+        {user && <BottomNav active={activeTab} onChange={setActiveTab} />}
       </div>
     </div>
   )

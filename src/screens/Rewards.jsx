@@ -7,9 +7,21 @@ export default function Rewards() {
   const [rewards, setRewards] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const [history, setHistory] = useState([])
+
   useEffect(() => {
     fetchRewards()
+    fetchHistory()
   }, [])
+
+  const fetchHistory = async () => {
+    if (!supabase.auth?.user && !localStorage.getItem('sb_user')) return
+    const u = JSON.parse(localStorage.getItem('sb_user'))
+    if (!u?.uid) return
+    
+    const { data } = await supabase.from('transactions').select('*').eq('user_id', u.uid).eq('type', 'redeem').order('created_at', { ascending: false }).limit(5)
+    if (data) setHistory(data)
+  }
 
   const fetchRewards = async () => {
     setLoading(true)
@@ -38,6 +50,7 @@ export default function Rewards() {
       try {
         await redeemCoins(r.coins, `${r.brand} ${r.disc}`)
         alert(t('redeemSuccess'))
+        fetchHistory()
       } catch (err) {
         alert(err.message)
       }
@@ -67,7 +80,7 @@ export default function Rewards() {
 
       {/* Rewards Grid */}
       <div className="section-label px" style={{ marginTop: 24 }}>{t('rewardStore')}</div>
-      <div className="px card-enter" style={{ paddingBottom: 24 }}>
+      <div className="px card-enter">
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>{t('loading')}</div>
         ) : (
@@ -108,8 +121,47 @@ export default function Rewards() {
         )}
       </div>
 
+      {/* Referral Card */}
+      <div className="px card-enter" style={{ marginTop: 24 }}>
+        <div className="card" style={{ background: 'var(--card-darker)', border: '1px dashed var(--yellow)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--yellow)' }}>REFER A FRIEND</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Get 50 EcoCoins for every referral</div>
+            </div>
+            <div style={{ fontSize: 24 }}>🎁</div>
+          </div>
+          <button className="scan-btn" style={{ marginTop: 12, height: 36, fontSize: 14, background: 'transparent', border: '1px solid var(--yellow)', color: 'var(--yellow)' }}>
+            SHARE CODE: SMARTBIN50
+          </button>
+        </div>
+      </div>
+
+      {/* Redemption History */}
+      {history.length > 0 && (
+        <>
+          <div className="section-label px" style={{ marginTop: 24 }}>MY VOUCHERS</div>
+          <div className="px card-enter">
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              {history.map((h, i) => (
+                <div key={i} style={{ 
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px',
+                  borderBottom: i < history.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{h.reason}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)' }}>{new Date(h.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--yellow)' }}>- {h.amount}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* How to earn */}
-      <div className="px">
+      <div className="px" style={{ marginTop: 24, paddingBottom: 40 }}>
         <div className="card" style={{ borderStyle: 'dashed', borderColor: 'var(--yellow)', background: 'transparent' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--yellow)', marginBottom: 4 }}>{t('howToEarn')}</div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)' }}>{t('scanAndEarn')}</div>

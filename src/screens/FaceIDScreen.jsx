@@ -3,25 +3,54 @@ import { useApp } from '../context/AppContext';
 import { uploadToCloudinary } from '../utils/cloudinary';
 import { supabase } from '../lib/supabase';
 
-export default function FaceIDScreen({ onClose, onSuccess, targetUid }) {
-  const { t, user, setUser, theme, updateUserProfile } = useApp();
-  const [phase, setPhase] = useState('idle'); // idle | scanning | verifying | uploading | done | error
-  const [statusMsg, setStatusMsg] = useState('Position your face in the frame');
+export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'setup' }) {
+  const { t, user, setUser, theme } = useApp();
+  const [phase, setPhase] = useState('loading'); // loading | idle | scanning | verifying | done | error
+  const [statusMsg, setStatusMsg] = useState('Initializing Face AI...');
   const [faceDetected, setFaceDetected] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-
-  const isDark = theme === 'dark';
+  const detectionInterval = useRef(null);
 
   useEffect(() => {
-    startCamera();
-    return () => stopCamera();
+    loadModels();
+    return () => {
+      stopCamera();
+      if (detectionInterval.current) clearInterval(detectionInterval.current);
+    };
   }, []);
+
+  const loadModels = async () => {
+    try {
+      if (!window.faceapi) {
+        throw new Error('Face API not loaded. Check index.html');
+      }
+      const MODEL_URL = '/models';
+      await Promise.all([
+        window.faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        window.faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        window.faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        window.faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      ]);
+      setModelsLoaded(true);
+      setPhase('idle');
+      setStatusMsg('Position your face in the frame');
+      startCamera();
+    } catch (err) {
+      console.error('Model load error:', err);
+      setPhase('error');
+      setStatusMsg('Failed to load Face AI models');
+    }
+  };
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onplay = () => startDetection();
+      }
       streamRef.current = stream;
     } catch (err) {
       setPhase('error');
@@ -35,27 +64,69 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid }) {
     }
   };
 
-  const startScan = () => {
-    setPhase('scanning');
-    setStatusMsg('Hold still — scanning your face...');
+  const startDetection = () => {
+    if (detectionInterval.current) clearInterval(detectionInterval.current);
     
-    // Simulate face detection
-    setTimeout(() => {
-      setFaceDetected(true);
-      setStatusMsg('Face detected ✓ — hold position');
-    }, 2000);
+    detectionInterval.current = setInterval(async () => {
+      if (!videoRef.current || phase === 'done' || phase === 'verifying') return;
 
-    // Auto capture
-    setTimeout(() => {
-      captureFace();
-    }, 4000);
+      const detection = await window.faceapi.detectSingleFace(
+        videoRef.current, 
+        new window.faceapi.TinyFaceDetectorOptions()
+      ).withFaceLandmarks();
+
+      if (detection) {
+        if (!faceDetected) setFaceDetected(true);
+      } else {
+        if (faceDetected) setFaceDetected(false);
+      }
+    }, 500);
   };
 
-  const captureFace = async () => {
+  const startScan = async () => {
+    if (!faceDetected) {
+      setStatusMsg('No face detected. Please center your face.');
+      return;
+    }
+
+    setPhase('scanning');
+    setStatusMsg(mode === 'setup' ? 'Capturing biometrics...' : 'Verifying identity...');
+    
+    // Give it a second to "scan"
+    setTimeout(() => {
+      captureAndVerify();
+    }, 2000);
+  };
+
+  const captureAndVerify = async () => {
     if (!videoRef.current) return;
     setPhase('verifying');
-    setStatusMsg('Capturing biometric data...');
 
+    try {
+      const detection = await window.faceapi.detectSingleFace(
+        videoRef.current, 
+        new window.faceapi.SsdMobilenetv1Options()
+      ).withFaceLandmarks().withFaceDescriptor();
+
+      if (!detection) {
+        throw new Error('Lost face tracking. Try again.');
+      }
+
+      if (mode === 'setup') {
+        await handleSetup(detection.descriptor);
+      } else {
+        await handleLogin(detection.descriptor);
+      }
+    } catch (err) {
+      console.error(err);
+      setPhase('error');
+      setStatusMsg(err.message || 'Verification failed');
+    }
+  };
+
+  const handleSetup = async (descriptor) => {
+    setStatusMsg('Saving secure profile...');
+    
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
@@ -63,37 +134,70 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid }) {
     ctx.drawImage(videoRef.current, 0, 0);
     const dataUrl = canvas.toDataURL('image/jpeg');
 
-    setPhase('uploading');
-    setStatusMsg('Uploading secure photo...');
+    const uploaded = await uploadToCloudinary(dataUrl);
+    const uid = targetUid || user?.uid;
     
-    try {
-      // Cloudinary upload
-      const uploaded = await uploadToCloudinary(dataUrl);
-      
-      // Update Supabase and local state
-      const uid = targetUid || user?.uid;
-      if (!uid) throw new Error('No user ID found');
-      
-      const { error } = await supabase.from('users').update({ photo_url: uploaded.url, face_id_enabled: true }).eq('uid', uid);
-      if (error) throw error;
+    // Store descriptor as array for Supabase
+    const { error } = await supabase.from('users').update({ 
+      photo_url: uploaded.url, 
+      face_id_enabled: true,
+      face_descriptor: Array.from(descriptor) 
+    }).eq('uid', uid);
+    
+    if (error) throw error;
 
-      if (user) {
-        const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
-        localStorage.setItem('sb_user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
-      }
+    if (user && user.uid === uid) {
+      const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
+      localStorage.setItem('sb_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
 
+    setPhase('done');
+    setStatusMsg('Face ID Registered!');
+    setTimeout(() => {
+      if (onSuccess) onSuccess(uploaded.url);
+      if (onClose) onClose();
+    }, 1500);
+  };
+
+  const handleLogin = async (currentDescriptor) => {
+    setStatusMsg('Matching biometrics...');
+    
+    // In a real app, we might fetch the user based on some other identifier first, 
+    // or if it's "Sign in with Face ID" from the login screen, we might need a way to find the user.
+    // For this demo, we'll assume we're verifying the current user or a pending user.
+    
+    const uid = targetUid || user?.uid;
+    if (!uid) {
+      // If no UID, we might need to search all users? 
+      // That's expensive. Let's assume we have an email or something.
+      // For now, let's just use the current user if available.
+      throw new Error('Identify yourself first (Email/Phone)');
+    }
+
+    const { data, error } = await supabase.from('users').select('face_descriptor, email, name, photo_url').eq('uid', uid).single();
+    if (error || !data.face_descriptor) throw new Error('Face ID not set up for this user');
+
+    const savedDescriptor = new Float32Array(data.face_descriptor);
+    const distance = window.faceapi.euclideanDistance(currentDescriptor, savedDescriptor);
+
+    console.log('Face distance:', distance);
+    
+    if (distance < 0.6) { // 0.6 is a common threshold for face-api.js
       setPhase('done');
-      setStatusMsg('Face ID registered successfully!');
+      setStatusMsg(`Welcome back, ${data.name}!`);
       
+      // Update local state to log in
+      const finalUser = { ...data, uid };
+      localStorage.setItem('sb_user', JSON.stringify(finalUser));
+      setUser(finalUser);
+
       setTimeout(() => {
-        if (onSuccess) onSuccess(uploaded.url);
+        if (onSuccess) onSuccess(finalUser);
         if (onClose) onClose();
-      }, 1800);
-    } catch (err) {
-      console.error(err);
-      setPhase('error');
-      setStatusMsg('Upload failed. Please retry.');
+      }, 1500);
+    } else {
+      throw new Error('Face does not match record');
     }
   };
 
@@ -149,7 +253,7 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid }) {
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(76,175,80,0.2)', fontSize: 80, color: '#4CAF50'
             }}>
-              ✓
+               
             </div>
           )}
         </div>
@@ -157,7 +261,7 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid }) {
 
       {/* Top Controls */}
       <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: 20, cursor: 'pointer' }}>✕</button>
+        <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: 20, cursor: 'pointer' }}> </button>
         <span style={{ fontFamily: 'var(--font-display)', letterSpacing: 2 }}>FACE ID SETUP</span>
         <div style={{ width: 40 }} />
       </div>
