@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { supabase } from '../lib/supabase'
+import FaceIDScreen from './FaceIDScreen'
 
 const CHART_DATA = [28, 45, 32, 67, 55, 80, 42]
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -12,11 +13,8 @@ export default function Profile() {
   } = useApp()
   const avatarRef = useRef(null)
   const fileInputRef = useRef(null)
-  const videoRef = useRef(null)
-  
   const [isEditing, setIsEditing] = useState(false)
   const [showFaceScan, setShowFaceScan] = useState(false)
-  const [faceScanning, setFaceScanning] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -65,25 +63,6 @@ export default function Profile() {
     }
   }
 
-  const startFaceScan = async () => {
-    setFaceScanning(true)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      if (videoRef.current) videoRef.current.srcObject = stream
-      
-      setTimeout(() => {
-        setFaceVerified(true)
-        setFaceScanning(false)
-        setShowFaceScan(false)
-        stream.getTracks().forEach(t => t.stop())
-        alert('Face ID Verified Successfully!')
-      }, 3000)
-    } catch (err) {
-      alert('Face ID failed: ' + err.message)
-      setFaceScanning(false)
-      setShowFaceScan(false)
-    }
-  }
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]
@@ -277,26 +256,15 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Face Scan Modal */}
+      {/* Face Scan Screen Overlay */}
       {showFaceScan && (
-        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ width: '80%', maxWidth: 300, textAlign: 'center', padding: 20 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 16 }}>FACE ID SCAN</div>
-            <div style={{ position: 'relative', width: 200, height: 200, margin: '0 auto', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--yellow)' }}>
-              <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              {faceScanning && <div className="scan-sweep" />}
-            </div>
-            <div style={{ marginTop: 20, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-              {faceScanning ? 'SCANNING BIOMETRICS...' : 'POSITION FACE IN CIRCLE'}
-            </div>
-            {!faceScanning && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-                <button className="scan-btn" onClick={startFaceScan} style={{ height: 36, fontSize: 14 }}>START</button>
-                <button className="icon-btn" onClick={() => setShowFaceScan(false)} style={{ fontSize: 14 }}>CANCEL</button>
-              </div>
-            )}
-          </div>
-        </div>
+        <FaceIDScreen 
+          onClose={() => setShowFaceScan(false)} 
+          onSuccess={(url) => {
+            setFaceVerified(true);
+            setShowFaceScan(false);
+          }}
+        />
       )}
 
       {/* Logout */}

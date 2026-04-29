@@ -11,7 +11,8 @@ export function AppProvider({ children }) {
   const [totalScans, setTotalScans] = useState(0)
   const [recentScans, setRecentScans] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [userProfile, setUserProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [language, setLanguage] = useState('en')
   const [theme, setTheme] = useState('dark')
   const [faceVerified, setFaceVerified] = useState(false)
@@ -28,6 +29,7 @@ export function AppProvider({ children }) {
     if (saved) {
       const u = JSON.parse(saved)
       setUser(u)
+      setUserProfile(u) // User profile matches user object for now
       setEcoCoins(u.eco_coins || 0)
       setTotalScans(u.total_scans || 0)
       setLanguage(u.language || 'en')
@@ -35,7 +37,29 @@ export function AppProvider({ children }) {
     }
     loadBinData()
     fetchLeaderboard()
+    setLoading(false)
   }, [])
+
+  const loadUserData = async (uid) => {
+    const { data } = await supabase.from('users').select('*').eq('uid', uid).single()
+    if (data) {
+      setUser(data)
+      setUserProfile(data)
+      setEcoCoins(data.eco_coins || 0)
+      setTotalScans(data.total_scans || 0)
+      localStorage.setItem('sb_user', JSON.stringify(data))
+    }
+  }
+
+  const updateUserProfile = async (updates) => {
+    if (!user?.uid) throw new Error('Not logged in')
+    const { error } = await supabase.from('users').update(updates).eq('uid', user.uid)
+    if (error) throw error
+    const updated = { ...user, ...updates }
+    setUser(updated)
+    setUserProfile(updated)
+    localStorage.setItem('sb_user', JSON.stringify(updated))
+  }
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
