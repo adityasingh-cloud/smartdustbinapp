@@ -177,6 +177,10 @@ export default function Profile() {
                 <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('pincode')}</label>
                 <input type="text" value={formData.pincode} onChange={e => setFormData({...formData, pincode: e.target.value})} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '8px 12px', outline: 'none' }} />
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>DOB</label>
+                <input type="date" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '8px 12px', outline: 'none' }} />
+              </div>
             </div>
           </div>
           <button onClick={handleSaveProfile} className="scan-btn" style={{ height: 44, fontSize: 18 }}>{t('save')}</button>
