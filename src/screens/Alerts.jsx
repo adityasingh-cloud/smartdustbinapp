@@ -68,7 +68,7 @@ const TYPE_LABELS = {
   info:    'INFO',
 }
 
-export default function Alerts() {
+export default function Alerts({ onBack }) {
   const [dismissed, setDismissed] = useState([])
 
   const visible = ALERTS.filter(a => !dismissed.includes(a.id))
@@ -78,10 +78,13 @@ export default function Alerts() {
     <div className="screen screen-fade">
       {/* Header */}
       <div className="topbar">
-        <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, letterSpacing: 3, color: 'var(--yellow)', lineHeight: 1 }}>ALERTS</div>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 2, marginTop: 2 }}>
-            {urgentCount > 0 ? `${urgentCount} critical · Action needed` : 'All systems normal'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button className="icon-btn" onClick={onBack} title="Go Back">←</button>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 36, letterSpacing: 3, color: 'var(--yellow)', lineHeight: 1 }}>ALERTS</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 2, marginTop: 2 }}>
+              {urgentCount > 0 ? `${urgentCount} critical · Action needed` : 'All systems normal'}
+            </div>
           </div>
         </div>
         <div style={{

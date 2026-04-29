@@ -21,27 +21,27 @@ function AppContent() {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'dashboard': return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} />
+      case 'dashboard': return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('profile')} />
       case 'camera':    return <CameraScreen key="camera" />
       case 'profile':   return <Profile key="profile" />
-      case 'alerts':    return <Alerts key="alerts" />
+      case 'alerts':    return <Alerts key="alerts" onBack={() => setActiveTab('dashboard')} />
       case 'map':       return <MapScreen key="map" />
       case 'rewards':   return <Rewards key="rewards" />
-      default:          return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} />
+      default:          return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('profile')} />
     }
   }
 
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', width: '100vw' }}>
       {/* Ambient desktop background */}
-      <div style={{
+      <div className="desktop-only" style={{
         position: 'fixed', inset: 0,
         background: 'radial-gradient(ellipse at 30% 50%, rgba(232,197,71,0.05) 0%, transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(196,98,45,0.05) 0%, transparent 60%)',
         pointerEvents: 'none',
       }} />
 
       {/* Team credit */}
-      <div style={{
+      <div className="desktop-only" style={{
         position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)',
         fontFamily: 'DM Mono, monospace', fontSize: 9, color: 'rgba(255,255,255,0.12)',
         textTransform: 'uppercase', letterSpacing: 4, whiteSpace: 'nowrap',

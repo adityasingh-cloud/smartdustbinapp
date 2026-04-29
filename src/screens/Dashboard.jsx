@@ -19,7 +19,7 @@ function AnimatedNumber({ target, duration = 1800 }) {
   return <>{val.toLocaleString()}</>
 }
 
-export default function Dashboard({ onBell }) {
+export default function Dashboard({ onBell, onSettings }) {
   const { user, binData, ecoCoins, totalScans, recentScans } = useApp()
 
   const BINS = [
@@ -41,7 +41,7 @@ export default function Dashboard({ onBell }) {
         <div className="topbar-logo">SMART<span>BIN</span></div>
         <div className="topbar-right">
           <button className="icon-btn notif-dot" title="Notifications" onClick={onBell}>🔔</button>
-          <button className="icon-btn" title="Settings">⚙</button>
+          <button className="icon-btn" title="Settings" onClick={onSettings}>⚙</button>
         </div>
       </div>
 

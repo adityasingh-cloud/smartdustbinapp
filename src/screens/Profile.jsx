@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { supabase } from '../lib/supabase'
 
 const REWARDS = [
   { brand: 'Starbucks',  disc: '20% OFF', expiry: 'Expires May 30', coins: 300, color: '#00704A' },
@@ -20,11 +21,20 @@ const SETTINGS = [
 ]
 
 export default function Profile() {
-  const { user, ecoCoins, totalScans, logout, redeemCoins } = useApp()
+  const { user, ecoCoins, totalScans, logout, redeemCoins, setUser } = useApp()
   const avatarRef = useRef(null)
+  const fileInputRef = useRef(null)
   const [toggles, setToggles] = useState(SETTINGS.map(s => s.val))
+  
+  const [isEditing, setIsEditing] = useState(false)
+  const [editName, setEditName] = useState(user?.name || '')
+  const [uploading, setUploading] = useState(false)
 
-  // 3D parallax tilt on mouse/touch
+  useEffect(() => {
+    setEditName(user?.name || '')
+  }, [user])
+
+  // 3D parallax tilt
   useEffect(() => {
     const el = avatarRef.current
     if (!el) return
@@ -51,6 +61,51 @@ export default function Profile() {
     }
   }, [])
 
+  const handleSaveProfile = async () => {
+    try {
+      const { error } = await supabase.from('users').update({ name: editName }).eq('uid', user.uid)
+      if (error) throw error
+      const updated = { ...user, name: editName }
+      localStorage.setItem('sb_user', JSON.stringify(updated))
+      setUser(updated)
+      setIsEditing(false)
+    } catch (err) {
+      alert('Failed to update profile: ' + err.message)
+    }
+  }
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+
+    try {
+      // For demo purposes, we'll use Cloudinary upload or just convert to base64 for display
+      // Since user provided Cloudinary creds, let's use them
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('upload_preset', 'Smartbin')
+      
+      const res = await fetch('https://api.cloudinary.com/v1_1/dc8suuh6h/image/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      
+      if (data.secure_url) {
+        const { error } = await supabase.from('users').update({ phone: data.secure_url }).eq('uid', user.uid) // Using phone field as placeholder for avatar_url for now or you can add a field
+        if (error) throw error
+        const updated = { ...user, phone: data.secure_url }
+        localStorage.setItem('sb_user', JSON.stringify(updated))
+        setUser(updated)
+      }
+    } catch (err) {
+      alert('Photo upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleRedeem = async (r) => {
     if (ecoCoins < r.coins) {
       alert(`You need ${r.coins - ecoCoins} more EcoCoins!`)
@@ -73,20 +128,62 @@ export default function Profile() {
       {/* Header */}
       <div className="topbar">
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: 3, color: 'var(--yellow)' }}>PROFILE</div>
-        <button className="icon-btn">✏</button>
+        <button 
+          className="icon-btn" 
+          onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
+          style={{ color: isEditing ? 'var(--green)' : 'inherit' }}
+        >
+          {isEditing ? '✅' : '✏'}
+        </button>
       </div>
 
       {/* Avatar */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 20px', gap: 12 }}>
-        <div className="avatar-wrap" ref={avatarRef} style={{ perspective: 400 }}>
+        <div 
+          className="avatar-wrap" 
+          ref={avatarRef} 
+          style={{ perspective: 400, cursor: 'pointer' }}
+          onClick={() => fileInputRef.current.click()}
+        >
           <div className="avatar-ring" />
-          <div className="avatar-img">{user?.name?.charAt(0).toUpperCase() || '👤'}</div>
-        </div>
-
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, letterSpacing: 2, lineHeight: 1 }}>
-            {user?.name?.toUpperCase() || 'GUEST USER'}
+          <div className="avatar-img" style={{ overflow: 'hidden' }}>
+            {uploading ? '⏳' : user?.phone ? <img src={user.phone} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.charAt(0).toUpperCase() || '👤')}
           </div>
+          <div style={{ 
+            position: 'absolute', bottom: 0, right: 0, 
+            background: 'var(--yellow)', borderRadius: '50%', width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
+            border: '2px solid var(--bg)', color: 'var(--bg)'
+          }}>📷</div>
+        </div>
+        
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          style={{ display: 'none' }} 
+          accept="image/*" 
+          onChange={handlePhotoUpload} 
+        />
+
+        <div style={{ textAlign: 'center', width: '100%' }}>
+          {isEditing ? (
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              style={{
+                fontFamily: 'var(--font-display)', fontSize: 30, letterSpacing: 2,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--yellow)',
+                color: 'var(--white)', textAlign: 'center', width: '80%', padding: '4px 8px',
+                borderRadius: 8
+              }}
+              autoFocus
+            />
+          ) : (
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, letterSpacing: 2, lineHeight: 1 }}>
+              {user?.name?.toUpperCase() || 'GUEST USER'}
+            </div>
+          )}
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>
             ECO WARRIOR · LEVEL {user?.level || 1}
           </div>

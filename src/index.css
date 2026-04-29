@@ -85,6 +85,9 @@ img { display: block; max-width: 100%; }
   border-radius: 0 0 20px 20px;
   z-index: 100;
 }
+@media (max-width: 440px) {
+  .phone-shell::before { display: none; }
+}
 
 /* ─── SCREEN CONTAINER ─── */
 .screen {
@@ -729,6 +732,7 @@ img { display: block; max-width: 100%; }
 
 /* ─── DESKTOP CENTERING ─── */
 @media (max-width: 440px) {
+  body { align-items: stretch; }
   .phone-shell {
     width: 100vw;
     height: 100dvh;
@@ -736,4 +740,5 @@ img { display: block; max-width: 100%; }
     border: none;
     box-shadow: none;
   }
+  .desktop-only { display: none !important; }
 }
