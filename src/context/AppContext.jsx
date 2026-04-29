@@ -105,8 +105,7 @@ export function AppProvider({ children }) {
     const uid = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
     const profileData = { 
       uid, name, email, password, 
-      phone: '', state: '', city: '', pincode: '', 
-      dob: '', language: 'en',
+      language: 'en',
       eco_coins: 0, total_scans: 0, total_eco_coins_earned: 0, 
       co2_saved: 0, level: 1 
     }
