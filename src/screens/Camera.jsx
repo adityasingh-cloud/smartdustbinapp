@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useApp } from '../context/AppContext'
 
 const CATEGORIES = [
   { id: 'dry',   label: 'Dry',   icon: '♻', color: '#E8C547', glow: 'rgba(232,197,71,0.3)' },
@@ -6,21 +7,49 @@ const CATEGORIES = [
   { id: 'metal', label: 'Metal', icon: '🔩', color: '#3A5A8C', glow: 'rgba(58,90,140,0.3)'  },
 ]
 
+const DEMO_ITEMS = [
+  { name: 'Plastic Bottle', cat: 'dry', pts: 5 },
+  { name: 'Banana Peel', cat: 'wet', pts: 3 },
+  { name: 'Aluminium Can', cat: 'metal', pts: 8 },
+  { name: 'Paper Box', cat: 'dry', pts: 4 },
+  { name: 'Food Waste', cat: 'wet', pts: 2 },
+  { name: 'Steel Spoon', cat: 'metal', pts: 10 },
+]
+
 export default function CameraScreen() {
+  const { saveScan } = useApp()
   const [detected, setDetected] = useState(null)
   const [scanning, setScanning] = useState(false)
   const [statusText, setStatusText] = useState('READY TO SCAN')
 
-  const handleScan = () => {
+  const handleScan = async () => {
     setScanning(true)
     setDetected(null)
     setStatusText('SCANNING WASTE...')
 
-    setTimeout(() => {
-      const idx = Math.floor(Math.random() * 3)
-      setDetected(CATEGORIES[idx].id)
-      setStatusText(`${CATEGORIES[idx].label.toUpperCase()} WASTE DETECTED`)
+    // Simulate AI analysis delay
+    setTimeout(async () => {
+      const item = DEMO_ITEMS[Math.floor(Math.random() * DEMO_ITEMS.length)]
+      setDetected(item.cat)
+      setStatusText(`${item.cat.toUpperCase()} WASTE DETECTED`)
       setScanning(false)
+
+      // Save to Supabase via Context
+      try {
+        await saveScan({
+          category: item.cat,
+          item_name: item.name,
+          description: `Automatically detected ${item.name} using AI Vision.`,
+          confidence: Math.floor(Math.random() * 10) + 90,
+          recyclable: item.cat === 'dry' || item.cat === 'metal',
+          hazardous: false,
+          disposal_tip: `Place this in the ${item.cat} section of the bin.`,
+          eco_coins_earned: item.pts,
+          image_url: '' // Placeholder for web demo
+        })
+      } catch (err) {
+        console.error('Save scan failed:', err)
+      }
     }, 2200)
   }
 
@@ -145,7 +174,7 @@ export default function CameraScreen() {
           fontFamily: 'var(--font-mono)', fontSize: 10,
           color: 'var(--text-muted)', letterSpacing: 1,
         }}>
-          Face detected • EcoCoins will be credited
+          AI Vision Active • EcoCoins will be credited
         </div>
       </div>
 

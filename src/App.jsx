@@ -8,9 +8,16 @@ import Profile from './screens/Profile'
 import Alerts from './screens/Alerts'
 import MapScreen from './screens/MapScreen'
 import Rewards from './screens/Rewards'
+import AuthScreen from './screens/Auth'
+import { AppProvider, useApp } from './context/AppContext'
 
-export default function App() {
+function AppContent() {
+  const { user } = useApp()
   const [activeTab, setActiveTab] = useState('dashboard')
+
+  if (!user) {
+    return <AuthScreen />
+  }
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -55,5 +62,13 @@ export default function App() {
         <BottomNav active={activeTab} onChange={setActiveTab} />
       </div>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   )
 }

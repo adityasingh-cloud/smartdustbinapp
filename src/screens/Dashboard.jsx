@@ -1,18 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import BinModel3D from '../components/BinModel3D'
 import ErrorBoundary from '../components/ErrorBoundary'
-
-const BINS = [
-  { label: 'Dry',   pct: 72, color: '#E8C547', cls: 'dry',   icon: '🟡' },
-  { label: 'Wet',   pct: 45, color: '#4A7C4E', cls: 'wet',   icon: '🟢' },
-  { label: 'Metal', pct: 88, color: '#3A5A8C', cls: 'metal', icon: '🔵' },
-]
-
-const ACTIVITY = [
-  { type: 'Dry',   label: 'Plastic Bottle',    time: '09:41 AM', pts: '+5',  badge: 'badge-dry'   },
-  { type: 'Wet',   label: 'Banana Peel',        time: '09:15 AM', pts: '+3',  badge: 'badge-wet'   },
-  { type: 'Metal', label: 'Aluminium Can',      time: '08:52 AM', pts: '+8',  badge: 'badge-metal' },
-]
+import { useApp } from '../context/AppContext'
 
 function AnimatedNumber({ target, duration = 1800 }) {
   const [val, setVal] = useState(0)
@@ -31,6 +20,20 @@ function AnimatedNumber({ target, duration = 1800 }) {
 }
 
 export default function Dashboard({ onBell }) {
+  const { user, binData, ecoCoins, totalScans, recentScans } = useApp()
+
+  const BINS = [
+    { label: 'Dry',   pct: binData?.dry || 0,   color: '#E8C547', cls: 'dry',   icon: '🟡' },
+    { label: 'Wet',   pct: binData?.wet || 0,   color: '#4A7C4E', cls: 'wet',   icon: '🟢' },
+    { label: 'Metal', pct: binData?.metal || 0, color: '#3A5A8C', cls: 'metal', icon: '🔵' },
+  ]
+
+  const formatTime = (ts) => {
+    if (!ts) return ''
+    const d = new Date(ts)
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <div className="screen screen-fade">
       {/* Top Bar */}
@@ -93,9 +96,9 @@ export default function Dashboard({ onBell }) {
                 EcoCoins Balance
               </div>
               <div className="ecocoins-num">
-                <AnimatedNumber target={1240} />
+                <AnimatedNumber target={ecoCoins} />
               </div>
-              <div className="ecocoins-sub">+86 this week • Level 4</div>
+              <div className="ecocoins-sub">{totalScans} Total Scans • Level {user?.level || 1}</div>
               <div className="ecocoins-cta">
                 Redeem for rewards <span>→</span>
               </div>
@@ -121,24 +124,28 @@ export default function Dashboard({ onBell }) {
       {/* Recent Activity */}
       <div className="section-label px">Recent Disposals</div>
       <div className="px" style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-        {ACTIVITY.map((a, i) => (
+        {recentScans.length === 0 ? (
+          <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+            NO ACTIVITY YET
+          </div>
+        ) : recentScans.map((a, i) => (
           <div key={i} className="card card-enter flex items-center justify-between" style={{ animationDelay: `${0.3 + i * 0.07}s`, padding: '12px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: `rgba(${a.type === 'Dry' ? '232,197,71' : a.type === 'Wet' ? '74,124,78' : '58,90,140'},0.15)`,
+                background: `rgba(${a.category === 'dry' ? '232,197,71' : a.category === 'wet' ? '74,124,78' : '58,90,140'},0.15)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
               }}>
-                {a.type === 'Dry' ? '♻' : a.type === 'Wet' ? '🌿' : '🔩'}
+                {a.category === 'dry' ? '♻' : a.category === 'wet' ? '🌿' : '🔩'}
               </div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>{a.label}</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{a.time}</div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{a.item_name}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{formatTime(a.created_at)}</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-              <span className={`badge ${a.badge}`}>{a.type}</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#6BBF6F' }}>{a.pts} coins</span>
+              <span className={`badge badge-${a.category}`}>{a.category}</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#6BBF6F' }}>+{a.eco_coins_earned} coins</span>
             </div>
           </div>
         ))}
@@ -157,7 +164,7 @@ export default function Dashboard({ onBell }) {
               padding: '4px 10px', borderRadius: 4,
               fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--yellow)',
             }}>
-              BIN #SB-042 · 12m away
+              BIN #SB-042 · {binData?.name || 'Main Bin'}
             </div>
             <div style={{
               position: 'absolute', top: 8, right: 8,

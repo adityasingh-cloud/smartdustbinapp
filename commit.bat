@@ -1,3 +1,3 @@
 git add -A
-git commit -m "feat: migrate to Supabase, real Cloudinary creds"
+git commit -m "feat: complete backend integration for web app with Supabase and Cloudinary"
 git push origin main

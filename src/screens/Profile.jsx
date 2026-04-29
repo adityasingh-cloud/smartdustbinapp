@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useApp } from '../context/AppContext'
 
 const REWARDS = [
   { brand: 'Starbucks',  disc: '20% OFF', expiry: 'Expires May 30', coins: 300, color: '#00704A' },
@@ -19,6 +20,7 @@ const SETTINGS = [
 ]
 
 export default function Profile() {
+  const { user, ecoCoins, totalScans, logout, redeemCoins } = useApp()
   const avatarRef = useRef(null)
   const [toggles, setToggles] = useState(SETTINGS.map(s => s.val))
 
@@ -49,6 +51,21 @@ export default function Profile() {
     }
   }, [])
 
+  const handleRedeem = async (r) => {
+    if (ecoCoins < r.coins) {
+      alert(`You need ${r.coins - ecoCoins} more EcoCoins!`)
+      return
+    }
+    if (confirm(`Redeem ${r.brand} ${r.disc} for ${r.coins} coins?`)) {
+      try {
+        await redeemCoins(r.coins, `${r.brand} ${r.disc}`)
+        alert('Reward redeemed! Check your email for the voucher.')
+      } catch (err) {
+        alert(err.message)
+      }
+    }
+  }
+
   const maxVal = Math.max(...CHART_DATA)
 
   return (
@@ -63,15 +80,15 @@ export default function Profile() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 20px', gap: 12 }}>
         <div className="avatar-wrap" ref={avatarRef} style={{ perspective: 400 }}>
           <div className="avatar-ring" />
-          <div className="avatar-img">🧑‍💻</div>
+          <div className="avatar-img">{user?.name?.charAt(0).toUpperCase() || '👤'}</div>
         </div>
 
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, letterSpacing: 2, lineHeight: 1 }}>
-            ARJUN PATEL
+            {user?.name?.toUpperCase() || 'GUEST USER'}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>
-            ECO WARRIOR · LEVEL 4
+            ECO WARRIOR · LEVEL {user?.level || 1}
           </div>
         </div>
       </div>
@@ -80,15 +97,15 @@ export default function Profile() {
       <div className="px card-enter" style={{ marginBottom: 16 }}>
         <div className="stats-row">
           <div className="stat-cell">
-            <div className="stat-num">284</div>
+            <div className="stat-num">{totalScans}</div>
             <div className="stat-lbl">Disposals</div>
           </div>
           <div className="stat-cell">
-            <div className="stat-num">1240</div>
+            <div className="stat-num">{ecoCoins}</div>
             <div className="stat-lbl">EcoCoins</div>
           </div>
           <div className="stat-cell">
-            <div className="stat-num">18kg</div>
+            <div className="stat-num">{(user?.co2_saved || 0).toFixed(1)}kg</div>
             <div className="stat-lbl">CO₂ Saved</div>
           </div>
         </div>
@@ -109,7 +126,7 @@ export default function Profile() {
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--yellow)', marginTop: 4 }}>
                 🪙 {r.coins} coins
               </div>
-              <button className="reward-btn">Redeem →</button>
+              <button className="reward-btn" onClick={() => handleRedeem(r)}>Redeem →</button>
             </div>
           ))}
         </div>
@@ -173,16 +190,18 @@ export default function Profile() {
 
       {/* Logout */}
       <div className="px" style={{ marginBottom: 32 }}>
-        <button style={{
-          width: '100%', padding: '14px',
-          background: 'transparent',
-          border: '1.5px solid rgba(196,98,45,0.4)',
-          borderRadius: 'var(--r-md)',
-          color: 'var(--orange)',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
-          cursor: 'pointer', transition: 'all 0.2s',
-        }}
+        <button 
+          onClick={logout}
+          style={{
+            width: '100%', padding: '14px',
+            background: 'transparent',
+            border: '1.5px solid rgba(196,98,45,0.4)',
+            borderRadius: 'var(--r-md)',
+            color: 'var(--orange)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12, letterSpacing: 2, textTransform: 'uppercase',
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}
           onMouseEnter={e => { e.target.style.background = 'rgba(196,98,45,0.1)' }}
           onMouseLeave={e => { e.target.style.background = 'transparent' }}
         >
