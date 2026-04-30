@@ -29,18 +29,29 @@ export function AppProvider({ children }) {
         setTheme(savedTheme)
         document.body.className = savedTheme
 
-        if (saved && saved !== 'undefined') {
-          const u = JSON.parse(saved)
-          setUser(u)
-          setUserProfile(u)
-          setEcoCoins(u.eco_coins || 0)
-          setTotalScans(u.total_scans || 0)
-          setLanguage(u.language || 'en')
-          subscribeRealtime(u.uid)
+        if (saved && saved !== 'undefined' && saved !== 'null') {
+          const localUser = JSON.parse(saved)
+          setUser(localUser) // Set local version first for instant load
+          
+          // Refresh from DB for real-time persistence
+          if (localUser.uid) {
+            console.log('Refreshing user data from DB...')
+            const { data, error } = await supabase.from('users').select('*').eq('uid', localUser.uid).single()
+            if (!error && data) {
+              setUser(data)
+              setEcoCoins(data.eco_coins || 0)
+              setTotalScans(data.total_scans || 0)
+              setLanguage(data.language || 'en')
+              localStorage.setItem('sb_user', JSON.stringify(data))
+              subscribeRealtime(data.uid)
+            } else if (error) {
+              console.warn('Persistence refresh failed:', error.message)
+              subscribeRealtime(localUser.uid) // Still subscribe even if fetch fails
+            }
+          }
         }
       } catch (err) {
         console.error('Failed to load persisted state:', err)
-        localStorage.removeItem('sb_user')
       } finally {
         try {
           await Promise.all([
@@ -55,14 +66,15 @@ export function AppProvider({ children }) {
   }, [])
 
   const loadUserData = async (uid) => {
-    const { data } = await supabase.from('users').select('*').eq('uid', uid).single()
-    if (data) {
+    const { data, error } = await supabase.from('users').select('*').eq('uid', uid).single()
+    if (!error && data) {
       setUser(data)
-      setUserProfile(data)
       setEcoCoins(data.eco_coins || 0)
       setTotalScans(data.total_scans || 0)
       localStorage.setItem('sb_user', JSON.stringify(data))
+      return data
     }
+    return null
   }
 
   const updateUserProfile = async (updates) => {

@@ -78,6 +78,7 @@ export default function Profile() {
 
   const handleSaveProfile = async () => {
     if (!user?.uid) return
+    setUploading(true)
     try {
       const { error } = await supabase.from('users').update(formData).eq('uid', user.uid)
       if (error) throw error
@@ -86,10 +87,12 @@ export default function Profile() {
       localStorage.setItem('sb_user', JSON.stringify(updated))
       setUser(updated)
       setIsEditing(false)
-      alert(t('profileUpdated'))
+      alert('✓ ' + t('profileUpdated'))
     } catch (err) {
       console.error('Update failed:', err)
-      alert(t('updateFailed') + ': ' + err.message)
+      alert('❌ ' + t('updateFailed') + ': ' + err.message)
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -99,25 +102,22 @@ export default function Profile() {
     setUploading(true)
 
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('upload_preset', 'Smartbin')
+      // Use the centralized utility
+      const { uploadToCloudinary } = await import('../utils/cloudinary')
+      const uploaded = await uploadToCloudinary(file)
       
-      const res = await fetch('https://api.cloudinary.com/v1_1/dc8suuh6h/image/upload', {
-        method: 'POST',
-        body: fd
-      })
-      const data = await res.json()
-      
-      if (data.secure_url) {
-        const { error } = await supabase.from('users').update({ photo_url: data.secure_url }).eq('uid', user.uid) 
+      if (uploaded.url) {
+        const { error } = await supabase.from('users').update({ photo_url: uploaded.url }).eq('uid', user.uid) 
         if (error) throw error
-        const updated = { ...user, photo_url: data.secure_url }
+        
+        const updated = { ...user, photo_url: uploaded.url }
         localStorage.setItem('sb_user', JSON.stringify(updated))
         setUser(updated)
+        alert('✓ Photo Updated!')
       }
     } catch (err) {
-      alert('Photo upload failed: ' + err.message)
+      console.error('Photo upload failed:', err)
+      alert('❌ Photo upload failed: ' + err.message)
     } finally {
       setUploading(false)
     }
