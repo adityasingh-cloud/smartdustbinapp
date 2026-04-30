@@ -10,6 +10,7 @@ import MapScreen from './screens/MapScreen'
 import Rewards from './screens/Rewards'
 import AuthScreen from './screens/Auth'
 import FaceRecognitionPage from './screens/FaceRecognitionPage'
+import EcoCatalog from './screens/EcoCatalog'
 import { AppProvider, useApp } from './context/AppContext'
 
 function AppContent() {
@@ -39,14 +40,15 @@ function AppContent() {
     }
 
     switch (activeTab) {
-      case 'dashboard': return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('profile')} />
+      case 'dashboard': return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('ecocatalog')} />
       case 'camera':    return <CameraScreen key="camera" />
       case 'profile':   return <Profile key="profile" />
       case 'alerts':    return <Alerts key="alerts" onBack={() => setActiveTab('dashboard')} />
       case 'map':       return <MapScreen key="map" />
       case 'rewards':   return <Rewards key="rewards" />
       case 'face-debug': return <FaceRecognitionPage key="face-debug" />
-      default:          return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('profile')} />
+      case 'ecocatalog': return <EcoCatalog key="ecocatalog" onBack={() => setActiveTab('dashboard')} />
+      default:          return <Dashboard key="dashboard" onBell={() => setActiveTab('alerts')} onSettings={() => setActiveTab('ecocatalog')} />
     }
   }
 

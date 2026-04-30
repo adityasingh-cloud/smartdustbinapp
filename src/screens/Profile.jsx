@@ -107,17 +107,30 @@ export default function Profile() {
       const uploaded = await uploadToCloudinary(file)
       
       if (uploaded.url) {
-        const { error } = await supabase.from('users').update({ photo_url: uploaded.url }).eq('uid', user.uid) 
-        if (error) throw error
+        // Dynamic column detection
+        const possibleCols = ['photo_url', 'avatar_url', 'image_url', 'photo', 'avatar'];
+        const existingCols = Object.keys(user || {});
+        const targetCol = possibleCols.find(c => existingCols.includes(c)) || 'photo_url';
+
+        console.log('Detected photo column:', targetCol);
+        const { error } = await supabase.from('users').update({ [targetCol]: uploaded.url }).eq('uid', user.uid) 
         
-        const updated = { ...user, photo_url: uploaded.url }
+        if (error) {
+          const available = existingCols.join(', ');
+          if (error.message.includes('column') || error.code === 'PGRST204') {
+            throw new Error(`Schema mismatch: Column "${targetCol}" not found. \nAvailable columns: ${available}\n\nFIX: Run "ALTER TABLE users ADD COLUMN photo_url TEXT;" in Supabase.`);
+          }
+          throw error
+        }
+        
+        const updated = { ...user, [targetCol]: uploaded.url }
         localStorage.setItem('sb_user', JSON.stringify(updated))
         setUser(updated)
         alert('✓ Photo Updated!')
       }
     } catch (err) {
       console.error('Photo upload failed:', err)
-      alert('❌ Photo upload failed: ' + err.message)
+      alert('❌ ' + err.message)
     } finally {
       setUploading(false)
     }

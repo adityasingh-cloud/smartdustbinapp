@@ -167,13 +167,22 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
       const uploaded = await uploadToCloudinary(dataUrl);
       
       console.log('Updating Supabase database...');
+      const existingCols = Object.keys(user || {});
+      const photoCol = ['photo_url', 'avatar_url', 'image_url', 'photo'].find(c => existingCols.includes(c)) || 'photo_url';
+
       const { error } = await supabase.from('users').update({ 
-        photo_url: uploaded.url, 
+        [photoCol]: uploaded.url, 
         face_id_enabled: true,
         face_descriptor: Array.from(descriptor) 
       }).eq('uid', uid);
       
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('column') || error.code === 'PGRST204') {
+          const available = existingCols.join(', ');
+          throw new Error(`Database Error: Column missing. \nYour columns: ${available}\n\nFIX: Run "ALTER TABLE users ADD COLUMN photo_url TEXT, ADD COLUMN face_id_enabled BOOLEAN, ADD COLUMN face_descriptor FLOAT8[];" in Supabase.`);
+        }
+        throw error;
+      }
 
       if (user && user.uid === uid) {
         const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
