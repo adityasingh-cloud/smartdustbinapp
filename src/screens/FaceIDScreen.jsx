@@ -127,14 +127,20 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
 
     try {
       // 2. Use TinyFaceDetector (Ultra Fast) on the static canvas
-      // This is much more reliable on mobile devices
-      const detection = await window.faceapi.detectSingleFace(
+      // We use a timeout to ensure it never hangs the UI
+      const detectionPromise = window.faceapi.detectSingleFace(
         canvas, 
-        new window.faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 })
+        new window.faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.35 })
       ).withFaceLandmarks().withFaceDescriptor();
 
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('AI Engine Timeout')), 5000)
+      );
+
+      const detection = await Promise.race([detectionPromise, timeoutPromise]);
+
       if (!detection) {
-        throw new Error('Face blurry or not found. Hold still.');
+        throw new Error('Face not recognized. Keep still.');
       }
 
       setStatusMsg('Saving to Database...');
@@ -146,10 +152,10 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
       }
     } catch (err) {
       console.error('Face processing error:', err);
-      // Fallback: If biometrics fail but photo is taken, we might allow it in setup?
-      // No, for login we need it. For setup, we'll give one more try.
+      // If it's a timeout or error, but we have a photo, and it's setup mode, we could fallback
+      // but for security we'll ask to retry.
       setPhase('error');
-      setStatusMsg(err.message || 'Processing failed');
+      setStatusMsg(err.message === 'AI Engine Timeout' ? 'Processing took too long. Try again.' : (err.message || 'Processing failed'));
     }
   };
 
@@ -305,7 +311,10 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
 
       <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 20, cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12 }}>✕ CLOSE</button>
-        <span style={{ fontFamily: 'var(--font-display)', letterSpacing: 2 }}>FACE ID SETUP</span>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-display)', letterSpacing: 2, fontSize: 14 }}>FACE ID AI</div>
+          <div style={{ fontSize: 9, opacity: 0.5, fontFamily: 'var(--font-mono)' }}>v2.9 (OPTIMIZED)</div>
+        </div>
         <div style={{ width: 40 }} />
       </div>
 
