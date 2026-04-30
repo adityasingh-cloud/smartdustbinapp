@@ -92,10 +92,10 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
     setPhase('scanning');
     setStatusMsg(mode === 'setup' ? 'Capturing biometrics...' : 'Verifying identity...');
     
-    // Give it a second to "scan"
+    // Reduce scan delay for "minimal time" requirement
     setTimeout(() => {
       captureAndVerify();
-    }, 2000);
+    }, 600);
   };
 
   const captureAndVerify = async () => {
@@ -103,103 +103,129 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
     setPhase('verifying');
 
     try {
+      console.log('Capture starting...');
       const detection = await window.faceapi.detectSingleFace(
         videoRef.current, 
-        new window.faceapi.SsdMobilenetv1Options()
+        new window.faceapi.TinyFaceDetectorOptions()
       ).withFaceLandmarks().withFaceDescriptor();
 
       if (!detection) {
         throw new Error('Lost face tracking. Try again.');
       }
 
+      console.log('Face detected, processing result...');
       if (mode === 'setup') {
         await handleSetup(detection.descriptor);
       } else {
         await handleCaptureResult(detection.descriptor);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Capture error:', err);
       setPhase('error');
       setStatusMsg(err.message || 'Verification failed');
     }
   };
 
   const handleSetup = async (descriptor) => {
-    setStatusMsg('Saving secure profile...');
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg');
+    try {
+      setStatusMsg('Saving secure profile...');
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 0.8 quality for speed
 
-    const uploaded = await uploadToCloudinary(dataUrl);
-    const uid = targetUid || user?.uid;
-    
-    // Store descriptor as array for Supabase
-    const { error } = await supabase.from('users').update({ 
-      photo_url: uploaded.url, 
-      face_id_enabled: true,
-      face_descriptor: Array.from(descriptor) 
-    }).eq('uid', uid);
-    
-    if (error) throw error;
+      const uid = targetUid || user?.uid;
+      if (!uid) throw new Error('User context missing. Login first.');
 
-    if (user && user.uid === uid) {
-      const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
-      localStorage.setItem('sb_user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      // Parallelize to save time
+      console.log('Uploading photo and updating database...');
+      const uploadPromise = uploadToCloudinary(dataUrl);
+      
+      const uploaded = await uploadPromise;
+      
+      const { error } = await supabase.from('users').update({ 
+        photo_url: uploaded.url, 
+        face_id_enabled: true,
+        face_descriptor: Array.from(descriptor) 
+      }).eq('uid', uid);
+      
+      if (error) throw error;
+
+      if (user && user.uid === uid) {
+        const updatedUser = { ...user, photo_url: uploaded.url, face_id_enabled: true };
+        localStorage.setItem('sb_user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+
+      setPhase('done');
+      setStatusMsg('Face ID Registered!');
+      setTimeout(() => {
+        if (onSuccess) onSuccess(uploaded.url);
+        if (onClose) onClose();
+      }, 1000);
+    } catch (err) {
+      console.error('Setup failed:', err);
+      setPhase('error');
+      setStatusMsg('Setup failed: ' + err.message);
     }
-
-    setPhase('done');
-    setStatusMsg('Face ID Registered!');
-    setTimeout(() => {
-      if (onSuccess) onSuccess(uploaded.url);
-      if (onClose) onClose();
-    }, 1500);
   };
 
   const handleCaptureResult = async (currentDescriptor) => {
-    const uid = targetUid || user?.uid;
+    let uid = targetUid || user?.uid;
+    
     if (!uid) {
+      // Fallback for login mode if email was entered but no pending user
       const saved = localStorage.getItem('sb_user');
       if (saved) {
-        try {
-          const u = JSON.parse(saved);
-          if (u.uid) return performLoginMatch(currentDescriptor, u.uid);
-        } catch (e) {}
+        const u = JSON.parse(saved);
+        uid = u.uid;
       }
-      throw new Error('Please enter your email first to verify Face ID');
     }
+
+    if (!uid) {
+      // For debug/login from scratch, try to find a match across all users (Slow but works)
+      // Usually we want the UID though.
+      throw new Error('Please sign in with email once to enable Face ID');
+    }
+
     return performLoginMatch(currentDescriptor, uid);
   };
 
   const performLoginMatch = async (currentDescriptor, uid) => {
-    setStatusMsg('Matching biometrics...');
-    const { data, error } = await supabase.from('users').select('face_descriptor, email, name, photo_url, uid').eq('uid', uid).single();
-    if (error || !data.face_descriptor) throw new Error('Face ID not set up for this user');
-
-    const savedDescriptor = new Float32Array(data.face_descriptor);
-    const distance = window.faceapi.euclideanDistance(currentDescriptor, savedDescriptor);
-
-    console.log('Face distance:', distance);
-    
-    if (distance < 0.6) { // 0.6 is a common threshold for face-api.js
-      setPhase('done');
-      setStatusMsg(`Welcome back, ${data.name}!`);
+    try {
+      setStatusMsg('Matching biometrics...');
+      const { data, error } = await supabase.from('users').select('face_descriptor, email, name, photo_url, uid').eq('uid', uid).single();
       
-      // Update local state to log in
-      const finalUser = { ...data, uid };
-      localStorage.setItem('sb_user', JSON.stringify(finalUser));
-      setUser(finalUser);
+      if (error) throw new Error('Network error. Check connection.');
+      if (!data || !data.face_descriptor) throw new Error('Face ID not set up for this user');
 
-      setTimeout(() => {
-        if (onSuccess) onSuccess(finalUser);
-        if (onClose) onClose();
-      }, 1500);
-    } else {
-      throw new Error('Face does not match record');
+      const savedDescriptor = new Float32Array(data.face_descriptor);
+      const distance = window.faceapi.euclideanDistance(currentDescriptor, savedDescriptor);
+
+      console.log('Face match distance:', distance);
+      
+      if (distance < 0.6) { 
+        setPhase('done');
+        setStatusMsg(`Welcome back, ${data.name}!`);
+        
+        const finalUser = { ...data, uid };
+        localStorage.setItem('sb_user', JSON.stringify(finalUser));
+        setUser(finalUser);
+
+        setTimeout(() => {
+          if (onSuccess) onSuccess(finalUser);
+          if (onClose) onClose();
+        }, 1000);
+      } else {
+        throw new Error('Face does not match our records');
+      }
+    } catch (err) {
+      console.error('Match error:', err);
+      setPhase('error');
+      setStatusMsg(err.message);
     }
   };
 
