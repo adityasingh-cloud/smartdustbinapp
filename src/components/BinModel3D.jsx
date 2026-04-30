@@ -133,8 +133,8 @@ export default function BinModel3D() {
         </button>
       </div>
 
-      {/* Compartment Selector */}
-      <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 8, width: 140, zIndex: 10 }}>
+      {/* Compartment Selector - Smaller & More Compact */}
+      <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', gap: 4, width: 110, zIndex: 10 }}>
         {POINTS.map(p => (
           <button 
             key={p.id}
@@ -142,35 +142,35 @@ export default function BinModel3D() {
             style={{ 
               background: activePoint.id === p.id ? 'var(--yellow)' : 'rgba(255,255,255,0.05)',
               color: activePoint.id === p.id ? 'var(--bg)' : 'var(--text-light)',
-              border: 'none', padding: '8px 12px', borderRadius: 6,
-              fontSize: 9, fontFamily: 'var(--font-mono)', textAlign: 'left',
-              transition: 'all 0.2s', cursor: 'pointer', borderRight: activePoint.id === p.id ? '4px solid var(--bg)' : 'none',
-              backdropFilter: 'blur(5px)'
+              border: 'none', padding: '4px 8px', borderRadius: 4,
+              fontSize: 8, fontFamily: 'var(--font-mono)', textAlign: 'left',
+              transition: 'all 0.2s', cursor: 'pointer', borderRight: activePoint.id === p.id ? '3px solid var(--bg)' : 'none',
+              backdropFilter: 'blur(5px)', textTransform: 'uppercase'
             }}
           >
-            {p.label}
+            {p.label.split('. ')[1] || p.label}
           </button>
         ))}
       </div>
 
-      {/* Info Panel */}
+      {/* Info Panel - Slimmer & Smaller */}
       <div style={{ 
-        position: 'absolute', bottom: 20, left: 20, right: 20, 
+        position: 'absolute', bottom: 12, left: 12, right: 12, 
         background: demoState === 'error' ? 'rgba(232, 84, 84, 0.95)' : 'rgba(20,20,20,0.9)', 
-        padding: '16px', borderRadius: 12,
+        padding: '8px 12px', borderRadius: 8,
         border: `1px solid ${demoState === 'error' ? '#fff' : 'var(--yellow)'}`, 
         backdropFilter: 'blur(10px)', zIndex: 10
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: demoState === 'error' ? '#fff' : 'var(--yellow)', letterSpacing: 1 }}>
-            {demoState === 'scanning' ? '🔍 ANALYZING WASTE...' : 
-             demoState === 'segregating' ? '🛤️ ROUTING TO BIN...' : 
-             demoState === 'error' ? '⚠️ ALARM: PLASTIC/MIXED WASTE!' :
-             activePoint.label}
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 12, color: demoState === 'error' ? '#fff' : 'var(--yellow)', letterSpacing: 0.5 }}>
+            {demoState === 'scanning' ? 'ANALYZING...' : 
+             demoState === 'segregating' ? 'ROUTING...' : 
+             demoState === 'error' ? '⚠️ ALARM: PLASTIC/MIXED!' :
+             activePoint.label.toUpperCase()}
           </div>
         </div>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#fff', marginTop: 8, lineHeight: 1.6, opacity: 0.9 }}>
-          {demoState === 'error' ? 'Non-detectable items found. Removal required.' : activePoint.desc}
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#fff', marginTop: 4, lineHeight: 1.4, opacity: 0.8 }}>
+          {demoState === 'error' ? 'Non-detectable items. Removal required.' : activePoint.desc}
         </div>
       </div>
     </div>
