@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 
 const BINS = [
@@ -10,9 +10,26 @@ const BINS = [
 export default function MapScreen() {
   const { t } = useApp()
   const [selected, setSelected] = useState(BINS[0])
+  const [userPos, setUserPos] = useState(null)
 
-  // Public search embed works without key
-  const publicMapUrl = `https://www.google.com/maps?q=${selected.lat},${selected.lng}&output=embed&z=16`
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords
+          setUserPos({ lat: latitude, lng: longitude })
+          // Optionally center on user initially
+        },
+        (err) => console.warn('Location access denied', err),
+        { enableHighAccuracy: true }
+      )
+    }
+  }, [])
+
+  // Use user position if available, otherwise default to selected bin
+  const mapLat = userPos?.lat || selected.lat
+  const mapLng = userPos?.lng || selected.lng
+  const publicMapUrl = `https://www.google.com/maps?q=${mapLat},${mapLng}&output=embed&z=15`
 
   return (
     <div className="screen screen-fade" style={{ display: 'flex', flexDirection: 'column' }}>

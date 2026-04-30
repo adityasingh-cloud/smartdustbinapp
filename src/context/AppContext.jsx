@@ -20,24 +20,37 @@ export function AppProvider({ children }) {
 
   // Load persisted user and theme from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('sb_user')
-    const savedTheme = localStorage.getItem('sb_theme') || 'dark'
-    
-    setTheme(savedTheme)
-    document.body.className = savedTheme
+    const init = async () => {
+      try {
+        const saved = localStorage.getItem('sb_user')
+        const savedTheme = localStorage.getItem('sb_theme') || 'dark'
+        
+        setTheme(savedTheme)
+        document.body.className = savedTheme
 
-    if (saved) {
-      const u = JSON.parse(saved)
-      setUser(u)
-      setUserProfile(u) // User profile matches user object for now
-      setEcoCoins(u.eco_coins || 0)
-      setTotalScans(u.total_scans || 0)
-      setLanguage(u.language || 'en')
-      subscribeRealtime(u.uid)
+        if (saved && saved !== 'undefined') {
+          const u = JSON.parse(saved)
+          setUser(u)
+          setUserProfile(u)
+          setEcoCoins(u.eco_coins || 0)
+          setTotalScans(u.total_scans || 0)
+          setLanguage(u.language || 'en')
+          subscribeRealtime(u.uid)
+        }
+      } catch (err) {
+        console.error('Failed to load persisted state:', err)
+        localStorage.removeItem('sb_user')
+      } finally {
+        try {
+          await Promise.all([
+            loadBinData().catch(() => {}),
+            fetchLeaderboard().catch(() => {})
+          ]);
+        } catch (e) {}
+        setLoading(false)
+      }
     }
-    loadBinData()
-    fetchLeaderboard()
-    setLoading(false)
+    init()
   }, [])
 
   const loadUserData = async (uid) => {

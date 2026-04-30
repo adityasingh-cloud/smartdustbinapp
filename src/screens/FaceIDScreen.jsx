@@ -115,7 +115,7 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
       if (mode === 'setup') {
         await handleSetup(detection.descriptor);
       } else {
-        await handleLogin(detection.descriptor);
+        await handleCaptureResult(detection.descriptor);
       }
     } catch (err) {
       console.error(err);
@@ -160,22 +160,24 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
     }, 1500);
   };
 
-  const handleLogin = async (currentDescriptor) => {
-    setStatusMsg('Matching biometrics...');
-    
-    // In a real app, we might fetch the user based on some other identifier first, 
-    // or if it's "Sign in with Face ID" from the login screen, we might need a way to find the user.
-    // For this demo, we'll assume we're verifying the current user or a pending user.
-    
+  const handleCaptureResult = async (currentDescriptor) => {
     const uid = targetUid || user?.uid;
     if (!uid) {
-      // If no UID, we might need to search all users? 
-      // That's expensive. Let's assume we have an email or something.
-      // For now, let's just use the current user if available.
-      throw new Error('Identify yourself first (Email/Phone)');
+      const saved = localStorage.getItem('sb_user');
+      if (saved) {
+        try {
+          const u = JSON.parse(saved);
+          if (u.uid) return performLoginMatch(currentDescriptor, u.uid);
+        } catch (e) {}
+      }
+      throw new Error('Please enter your email first to verify Face ID');
     }
+    return performLoginMatch(currentDescriptor, uid);
+  };
 
-    const { data, error } = await supabase.from('users').select('face_descriptor, email, name, photo_url').eq('uid', uid).single();
+  const performLoginMatch = async (currentDescriptor, uid) => {
+    setStatusMsg('Matching biometrics...');
+    const { data, error } = await supabase.from('users').select('face_descriptor, email, name, photo_url, uid').eq('uid', uid).single();
     if (error || !data.face_descriptor) throw new Error('Face ID not set up for this user');
 
     const savedDescriptor = new Float32Array(data.face_descriptor);
@@ -251,17 +253,17 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
           {phase === 'done' && (
             <div style={{
               position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(76,175,80,0.2)', fontSize: 80, color: '#4CAF50'
+              background: 'rgba(76,175,80,0.2)', fontSize: 80, color: '#4CAF50',
+              animation: 'cardSlideUp 0.3s ease'
             }}>
-               
+              ✓
             </div>
           )}
         </div>
       </div>
 
-      {/* Top Controls */}
-      <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: 20, cursor: 'pointer' }}> </button>
+      <div style={{ position: 'absolute', top: 20, left: 20, right: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+        <button onClick={onClose} style={{ background: 'rgba(0,0,0,0.5)', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 20, cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 12 }}>✕ CLOSE</button>
         <span style={{ fontFamily: 'var(--font-display)', letterSpacing: 2 }}>FACE ID SETUP</span>
         <div style={{ width: 40 }} />
       </div>

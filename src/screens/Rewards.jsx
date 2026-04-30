@@ -57,6 +57,11 @@ export default function Rewards() {
     }
   }
 
+  const getReferralMessage = () => {
+    const name = user?.name || 'your friend'
+    return encodeURIComponent(`Hey! ${name} invited you to SmartBin! Use code SMARTBIN50 to get 50 EcoCoins and start managing waste intelligently. Download: https://smartbin.app`)
+  }
+
   return (
     <div className="screen screen-fade">
       {/* Header */}
@@ -123,7 +128,7 @@ export default function Rewards() {
 
       {/* Referral Card */}
       <div className="px card-enter" style={{ marginTop: 24 }}>
-        <div className="card" style={{ background: 'var(--card-darker)', border: '1px dashed var(--yellow)' }}>
+        <div className="card" style={{ background: 'var(--card-darker)', border: '1px dashed var(--yellow)', padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--yellow)' }}>REFER A FRIEND</div>
@@ -131,9 +136,27 @@ export default function Rewards() {
             </div>
             <div style={{ fontSize: 24 }}>🎁</div>
           </div>
-          <button className="scan-btn" style={{ marginTop: 12, height: 36, fontSize: 14, background: 'transparent', border: '1px solid var(--yellow)', color: 'var(--yellow)' }}>
-            SHARE CODE: SMARTBIN50
-          </button>
+          
+          <div style={{ marginTop: 16, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--yellow)', letterSpacing: 2 }}>SMARTBIN50</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+            <button 
+              onClick={() => window.open(`https://wa.me/?text=${getReferralMessage()}`, '_blank')}
+              className="scan-btn" 
+              style={{ height: 36, fontSize: 11, background: '#25D366', color: '#fff', border: 'none' }}
+            >
+              WHATSAPP
+            </button>
+            <button 
+              onClick={() => window.open(`mailto:?subject=Join SmartBin&body=${getReferralMessage()}`, '_blank')}
+              className="scan-btn" 
+              style={{ height: 36, fontSize: 11, background: '#EA4335', color: '#fff', border: 'none' }}
+            >
+              GMAIL
+            </button>
+          </div>
         </div>
       </div>
 

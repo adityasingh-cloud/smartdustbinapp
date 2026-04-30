@@ -21,6 +21,16 @@ export default function Dashboard({ onBell, onSettings }) {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  const getLevelProgress = () => {
+    const coins = ecoCoins || 0
+    const currentLevel = user?.level || 1
+    const nextLevelTarget = currentLevel * 200
+    const progress = Math.min((coins / nextLevelTarget) * 100, 100)
+    return { progress, target: nextLevelTarget }
+  }
+
+  const { progress, target } = getLevelProgress()
+
   return (
     <div className="screen screen-fade">
       {/* Top Bar */}
@@ -46,18 +56,33 @@ export default function Dashboard({ onBell, onSettings }) {
       {/* Hero Stats */}
       <div className="px card-enter" style={{ marginTop: 8 }}>
         <div className="ecocoins-card">
-          <div className="ecocoins-num"><NumAnim val={ecoCoins} /></div>
-          <div className="ecocoins-sub">{t('yourCoins')}</div>
-          <div className="ecocoins-cta">
-            {t('ecoWarrior')} · LVL {user?.level || 1} 
-            <span style={{ marginLeft: 'auto' }}>→</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div className="ecocoins-num"><NumAnim val={ecoCoins} /></div>
+              <div className="ecocoins-sub">{t('yourCoins')}</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--bg)', background: 'rgba(0,0,0,0.1)', padding: '2px 8px', borderRadius: 4 }}>LVL {user?.level || 1}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, marginTop: 4, opacity: 0.7 }}>{t('ecoWarrior')}</div>
+            </div>
+          </div>
+          
+          {/* Level Progress Bar */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 8, marginBottom: 4, textTransform: 'uppercase', opacity: 0.8 }}>
+              <span>Progress to Level {(user?.level || 1) + 1}</span>
+              <span>{ecoCoins} / {target} XP</span>
+            </div>
+            <div style={{ height: 6, background: 'rgba(0,0,0,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--bg)', borderRadius: 3, transition: 'width 1s ease' }} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* 3D Model */}
       <div className="px card-enter" style={{ marginTop: 16 }}>
-        <div className="card" style={{ padding: 0, overflow: 'hidden', height: 220, background: 'transparent', border: 'none' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', height: 180, background: 'transparent', border: 'none' }}>
           <BinModel3D />
         </div>
       </div>
@@ -69,7 +94,7 @@ export default function Dashboard({ onBell, onSettings }) {
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>{t('totalScans')}</div>
         </div>
         <div className="card" style={{ padding: '12px 16px' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, lineHeight: 1, color: '#6BBF6F' }}>{(user?.co2_saved || 0).toFixed(1)}<span style={{ fontSize: 14 }}>KG</span></div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, lineHeight: 1, color: '#6BBF6F' }}>{(user?.co2_saved || (totalScans * 0.4)).toFixed(1)}<span style={{ fontSize: 14 }}>KG</span></div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>{t('co2Saved')}</div>
         </div>
       </div>
@@ -116,7 +141,7 @@ export default function Dashboard({ onBell, onSettings }) {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{u.name}</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>LVL {u.level}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>LVL {u.level || Math.floor(u.eco_coins / 200) + 1}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--yellow)' }}>{u.eco_coins}</div>
@@ -145,11 +170,14 @@ export default function Dashboard({ onBell, onSettings }) {
                   </div>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600 }}>{s.item_name}</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)' }}>{formatTime(s.created_at)}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)' }}>
+                      {formatTime(s.created_at)} · {s.category.toUpperCase()}
+                    </div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--yellow)', fontWeight: 600 }}>+{s.eco_coins_earned}</div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--text-muted)' }}>+{ (s.eco_coins_earned * 0.1).toFixed(1) } XP</div>
                 </div>
               </div>
             ))}

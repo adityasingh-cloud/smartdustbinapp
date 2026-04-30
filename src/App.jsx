@@ -13,7 +13,7 @@ import FaceRecognitionPage from './screens/FaceRecognitionPage'
 import { AppProvider, useApp } from './context/AppContext'
 
 function AppContent() {
-  const { user } = useApp()
+  const { user, loading, t } = useApp()
   const [activeTab, setActiveTab] = useState('dashboard')
   
   useEffect(() => {
@@ -21,6 +21,17 @@ function AppContent() {
     window.addEventListener('changeTab', handleTabChange)
     return () => window.removeEventListener('changeTab', handleTabChange)
   }, [])
+
+  if (loading) {
+    return (
+      <div style={{ 
+        position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', 
+        background: '#1A1A18', color: 'var(--yellow)', fontFamily: 'var(--font-display)', fontSize: 24, letterSpacing: 4
+      }}>
+        LOADING...
+      </div>
+    )
+  }
 
   const renderScreen = () => {
     if (!user) {

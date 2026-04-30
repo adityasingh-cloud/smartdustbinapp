@@ -129,7 +129,6 @@ export default function BinModel3D() {
       const binGroup = new THREE.Group()
 
       // Body
-      binGroup.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.55, 2.2, 32), bodyMat), { position: { x: 0, y: 1.1, z: 0 } }))
       const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.55, 2.2, 32), bodyMat)
       body.position.y = 1.1
       binGroup.add(body)
