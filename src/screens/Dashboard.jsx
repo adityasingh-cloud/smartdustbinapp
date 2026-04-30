@@ -7,7 +7,7 @@ const NumAnim = ({ val }) => {
 }
 
 export default function Dashboard({ onBell, onSettings }) {
-  const { user, binData, ecoCoins, totalScans, recentScans, leaderboard, t, language, changeLanguage } = useApp()
+  const { user, binData, ecoCoins, totalScans, recentScans, leaderboard, t, language, changeLanguage, notificationsEnabled } = useApp()
 
   const BINS = [
     { label: t('dry'),   pct: binData?.dry || 0,   color: '#E8C547', icon: '🟡' },
@@ -48,7 +48,14 @@ export default function Dashboard({ onBell, onSettings }) {
           >
             {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.code.toUpperCase()}</option>)}
           </select>
-          <button className="icon-btn notif-dot" title={t('notifications')} onClick={onBell}>🔔</button>
+          <button 
+            className={`icon-btn ${notificationsEnabled ? 'notif-dot' : ''}`} 
+            title={t('notifications')} 
+            onClick={() => notificationsEnabled && onBell()}
+            style={{ opacity: notificationsEnabled ? 1 : 0.5 }}
+          >
+            🔔
+          </button>
           <button className="icon-btn" title={t('settings')} onClick={onSettings}>⚙</button>
         </div>
       </div>

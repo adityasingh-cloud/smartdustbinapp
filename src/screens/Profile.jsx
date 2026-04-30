@@ -9,7 +9,8 @@ const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 export default function Profile() {
   const { 
     user, ecoCoins, totalScans, recentScans, logout, setUser, t, 
-    theme, toggleTheme, faceVerified, setFaceVerified 
+    theme, toggleTheme, faceVerified, setFaceVerified,
+    notificationsEnabled, setNotificationsEnabled
   } = useApp()
   const avatarRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -26,17 +27,34 @@ export default function Profile() {
   })
   const [uploading, setUploading] = useState(false)
 
+  // Calculate real-time weekly activity
+  const getWeeklyActivity = () => {
+    const days = [0, 0, 0, 0, 0, 0, 0]; // Mon to Sun
+    const now = new Date();
+    
+    recentScans.forEach(scan => {
+      const scanDate = new Date(scan.created_at);
+      // Only count scans from the last 7 days
+      if (now - scanDate < 7 * 24 * 60 * 60 * 1000) {
+        let dayIndex = scanDate.getDay() - 1; // getDay() is 0 for Sun
+        if (dayIndex < 0) dayIndex = 6; // Sunday
+        days[dayIndex]++;
+      }
+    });
+    return days;
+  };
+
+  const weeklyData = getWeeklyActivity();
+  const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
   const SETTINGS = [
-    { icon: '  ', label: 'notifications',     val: true,  action: null },
-    { icon: '  ', label: 'Face ID Login',      val: faceVerified, action: () => setShowFaceScan(true) },
-    { icon: '  ', label: 'Face Recognition Debug', val: false, action: () => { 
-      // This is a hacky way to change tab from within a component that doesn't have setActiveTab
-      // But AppContent uses useApp, so I should probably put activeTab in AppContext if I want to change it easily.
-      // For now, I'll just alert the user or use a window event.
+    { icon: '🔔', label: 'notifications',     val: notificationsEnabled, action: () => setNotificationsEnabled(!notificationsEnabled) },
+    { icon: '👤', label: 'Face ID Login',      val: faceVerified, action: () => setShowFaceScan(true) },
+    { icon: '🛠️', label: 'Face Recognition Debug', val: false, action: () => { 
       window.dispatchEvent(new CustomEvent('changeTab', { detail: 'face-debug' }));
     }},
-    { icon: '  ', label: 'darkMode',          val: theme === 'dark', action: toggleTheme },
-    { icon: '  ', label: 'Location Services', val: false, action: null },
+    { icon: theme === 'dark' ? '🌙' : '☀️', label: 'darkMode', val: theme === 'dark', action: toggleTheme },
+    { icon: '📍', label: 'Location Services', val: true, action: null },
   ]
 
   useEffect(() => {
@@ -51,11 +69,17 @@ export default function Profile() {
     })
   }, [user])
 
+  const getUserInitials = () => {
+    if (!user?.name) return '?'
+    const parts = user.name.split(' ')
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+    return user.name.substring(0, 2).toUpperCase()
+  }
+
   const handleSaveProfile = async () => {
     if (!user?.uid) return
     try {
-      console.log('Saving profile for:', user.uid, formData)
-      const { data, error } = await supabase.from('users').update(formData).eq('uid', user.uid).select().single()
+      const { error } = await supabase.from('users').update(formData).eq('uid', user.uid)
       if (error) throw error
       
       const updated = { ...user, ...formData }
@@ -68,7 +92,6 @@ export default function Profile() {
       alert(t('updateFailed') + ': ' + err.message)
     }
   }
-
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]
@@ -108,9 +131,9 @@ export default function Profile() {
         <button 
           className="icon-btn" 
           onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-          style={{ color: isEditing ? 'var(--green)' : 'inherit' }}
+          style={{ color: isEditing ? 'var(--green)' : 'inherit', border: isEditing ? '1px solid var(--green)' : '1px solid var(--border)' }}
         >
-          {isEditing ? ' ' : ' '}
+          {isEditing ? '✓' : '✎'}
         </button>
       </div>
 
@@ -123,15 +146,18 @@ export default function Profile() {
           onClick={() => fileInputRef.current.click()}
         >
           <div className="avatar-ring" />
-          <div className="avatar-img" style={{ overflow: 'hidden' }}>
-            {uploading ? '...' : user?.photo_url?.startsWith('http') ? <img src={user.photo_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (user?.name?.charAt(0).toUpperCase() || '?')}
+          <div className="avatar-img" style={{ overflow: 'hidden', background: 'var(--card-dark)', border: '2px solid var(--yellow)' }}>
+            {uploading ? '...' : user?.photo_url?.startsWith('http') ? 
+              <img src={user.photo_url} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 
+              <span style={{ fontSize: 32, fontFamily: 'var(--font-display)', color: 'var(--yellow)' }}>{getUserInitials()}</span>
+            }
           </div>
           <div style={{ 
-            position: 'absolute', bottom: 0, right: 0, 
-            background: 'var(--yellow)', borderRadius: '50%', width: 28, height: 28,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14,
-            border: '2px solid var(--bg)', color: 'var(--bg)'
-          }}>IMG</div>
+            position: 'absolute', bottom: 4, right: 4, 
+            background: 'var(--yellow)', borderRadius: '50%', width: 24, height: 24,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+            border: '2px solid var(--bg)', color: 'var(--bg)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+          }}>📸</div>
         </div>
         
         <input 
@@ -206,31 +232,35 @@ export default function Profile() {
                 <div className="stat-lbl">{t('ecoCoins')}</div>
               </div>
               <div className="stat-cell">
-                <div className="stat-num">{(user?.co2_saved || 0).toFixed(1)}kg</div>
+                <div className="stat-num">{(user?.co2_saved || (totalScans * 0.4)).toFixed(1)}kg</div>
                 <div className="stat-lbl">{t('co2Saved')}</div>
               </div>
             </div>
           </div>
 
           {/* Activity Chart */}
-          <div className="section-label px">{t('recentActivity')}</div>
+          <div className="section-label px">{t('weeklyActivity')}</div>
           <div className="px card-enter" style={{ marginBottom: 16 }}>
             <div className="card">
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 70 }}>
-                {CHART_DATA.map((v, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
-                    <div
-                      className="bar-col"
-                      style={{
-                        width: '100%',
-                        height: `${(v / 80) * 60}px`,
-                        background: i === 5 ? 'var(--orange)' : 'var(--yellow)',
-                        animationDelay: `${0.4 + i * 0.06}s`,
-                      }}
-                    />
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)' }}>{DAY_LABELS[i]}</div>
-                  </div>
-                ))}
+                {weeklyData.map((v, i) => {
+                  const maxVal = Math.max(...weeklyData, 5);
+                  return (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
+                      <div
+                        className="bar-col"
+                        style={{
+                          width: '100%',
+                          height: `${(v / maxVal) * 60}px`,
+                          background: v > 0 ? 'var(--yellow)' : 'rgba(255,255,255,0.05)',
+                          animationDelay: `${0.4 + i * 0.06}s`,
+                          minHeight: v > 0 ? 4 : 0
+                        }}
+                      />
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)' }}>{DAY_LABELS[i]}</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>

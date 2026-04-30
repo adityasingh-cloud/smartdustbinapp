@@ -137,26 +137,29 @@ export default function Rewards() {
             <div style={{ fontSize: 24 }}>🎁</div>
           </div>
           
-          <div style={{ marginTop: 16, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--yellow)', letterSpacing: 2 }}>SMARTBIN50</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-            <button 
-              onClick={() => window.open(`https://wa.me/?text=${getReferralMessage()}`, '_blank')}
-              className="scan-btn" 
-              style={{ height: 36, fontSize: 11, background: '#25D366', color: '#fff', border: 'none' }}
-            >
-              WHATSAPP
-            </button>
-            <button 
-              onClick={() => window.open(`mailto:?subject=Join SmartBin&body=${getReferralMessage()}`, '_blank')}
-              className="scan-btn" 
-              style={{ height: 36, fontSize: 11, background: '#EA4335', color: '#fff', border: 'none' }}
-            >
-              GMAIL
-            </button>
-          </div>
+          <button 
+            className="scan-btn" 
+            style={{ marginTop: 20, height: 44, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+            onClick={async () => {
+              const shareData = {
+                title: 'SmartBin',
+                text: decodeURIComponent(getReferralMessage().replace(/\+/g, ' ')),
+                url: 'https://smartbin.app'
+              }
+              if (navigator.share) {
+                try {
+                  await navigator.share(shareData)
+                } catch (err) {
+                  console.log('Share failed:', err)
+                }
+              } else {
+                // Fallback for browsers that don't support navigator.share
+                window.open(`https://wa.me/?text=${getReferralMessage()}`, '_blank')
+              }
+            }}
+          >
+            SHARE CODE: SMARTBIN50 📤
+          </button>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ export function AppProvider({ children }) {
   const [language, setLanguage] = useState('en')
   const [theme, setTheme] = useState('dark')
   const [faceVerified, setFaceVerified] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const subs = useRef([])
 
   // Load persisted user and theme from localStorage
