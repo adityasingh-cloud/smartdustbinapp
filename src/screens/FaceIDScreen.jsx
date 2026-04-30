@@ -101,69 +101,63 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
   const captureAndVerify = async () => {
     if (!videoRef.current || videoRef.current.readyState !== 4) {
       setPhase('error');
-      setStatusMsg('Camera not ready. Please refresh.');
+      setStatusMsg('Camera not ready.');
       return;
     }
 
     setPhase('verifying');
-    setStatusMsg('Analyzing Face...');
+    setStatusMsg('Capturing Photo...');
 
-    // Safety timeout to prevent infinite "revolving"
-    const timeoutId = setTimeout(() => {
-      if (phase === 'verifying') {
-        setPhase('error');
-        setStatusMsg('Detection timeout. Try again.');
-      }
-    }, 8000);
+    // 1. Take the photo IMMEDIATELY for feedback
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+    // Trigger Visual Flash
+    const flash = document.createElement('div');
+    flash.style.position = 'fixed'; flash.style.inset = 0; flash.style.background = '#fff'; flash.style.zIndex = 3000;
+    document.body.appendChild(flash);
+    setTimeout(() => flash.style.opacity = 0, 50);
+    setTimeout(() => document.body.removeChild(flash), 300);
+
+    setStatusMsg('Analyzing Biometrics...');
 
     try {
-      console.log('Starting Face API detection...');
-      // Use the more accurate SsdMobilenetv1 for the critical final capture
+      // 2. Perform AI Analysis on the captured frame (or video)
       const detection = await window.faceapi.detectSingleFace(
         videoRef.current, 
         new window.faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
       ).withFaceLandmarks().withFaceDescriptor();
 
-      clearTimeout(timeoutId);
-
       if (!detection) {
-        throw new Error('Face not found. Keep still and center your face.');
+        throw new Error('Face not found. Please stay still.');
       }
 
-      console.log('Detection successful, proceeding to result...');
+      setStatusMsg('Saving to Secure Database...');
+      
       if (mode === 'setup') {
-        await handleSetup(detection.descriptor);
+        await handleSetup(detection.descriptor, dataUrl);
       } else {
         await handleCaptureResult(detection.descriptor);
       }
     } catch (err) {
-      clearTimeout(timeoutId);
       console.error('Face verification error:', err);
       setPhase('error');
       setStatusMsg(err.message || 'Verification failed');
     }
   };
 
-  const handleSetup = async (descriptor) => {
+  const handleSetup = async (descriptor, dataUrl) => {
     try {
-      setStatusMsg('Saving secure profile...');
+      const uid = targetUid || user?.uid || 'guest_debug_' + Date.now();
       
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(videoRef.current, 0, 0);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8); // 0.8 quality for speed
-
-      const uid = targetUid || user?.uid;
-      if (!uid) throw new Error('User context missing. Login first.');
-
-      // Parallelize to save time
-      console.log('Uploading photo and updating database...');
-      const uploadPromise = uploadToCloudinary(dataUrl);
+      console.log('Starting Cloudinary upload...');
+      const uploaded = await uploadToCloudinary(dataUrl);
       
-      const uploaded = await uploadPromise;
-      
+      console.log('Updating Supabase database...');
       const { error } = await supabase.from('users').update({ 
         photo_url: uploaded.url, 
         face_id_enabled: true,
@@ -179,15 +173,15 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
       }
 
       setPhase('done');
-      setStatusMsg('Face ID Registered!');
+      setStatusMsg('Registration Complete! ✓');
       setTimeout(() => {
         if (onSuccess) onSuccess(uploaded.url);
         if (onClose) onClose();
-      }, 1000);
+      }, 1500);
     } catch (err) {
-      console.error('Setup failed:', err);
+      console.error('Database save failed:', err);
       setPhase('error');
-      setStatusMsg('Setup failed: ' + err.message);
+      setStatusMsg('Save Error: ' + err.message);
     }
   };
 
