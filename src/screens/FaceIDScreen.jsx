@@ -108,35 +108,36 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
     setPhase('verifying');
     setStatusMsg('Capturing Photo...');
 
-    // 1. Take the photo IMMEDIATELY for feedback
+    // 1. Snapshot the current frame
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // Lower quality = faster upload
 
-    // Trigger Visual Flash
+    // Visual Flash
     const flash = document.createElement('div');
     flash.style.position = 'fixed'; flash.style.inset = 0; flash.style.background = '#fff'; flash.style.zIndex = 3000;
     document.body.appendChild(flash);
     setTimeout(() => flash.style.opacity = 0, 50);
-    setTimeout(() => document.body.removeChild(flash), 300);
+    setTimeout(() => document.body.removeChild(flash), 200);
 
-    setStatusMsg('Analyzing Biometrics...');
+    setStatusMsg('Extracting Biometrics...');
 
     try {
-      // 2. Perform AI Analysis on the captured frame (or video)
+      // 2. Use TinyFaceDetector (Ultra Fast) on the static canvas
+      // This is much more reliable on mobile devices
       const detection = await window.faceapi.detectSingleFace(
-        videoRef.current, 
-        new window.faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
+        canvas, 
+        new window.faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 })
       ).withFaceLandmarks().withFaceDescriptor();
 
       if (!detection) {
-        throw new Error('Face not found. Please stay still.');
+        throw new Error('Face blurry or not found. Hold still.');
       }
 
-      setStatusMsg('Saving to Secure Database...');
+      setStatusMsg('Saving to Database...');
       
       if (mode === 'setup') {
         await handleSetup(detection.descriptor, dataUrl);
@@ -144,9 +145,11 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
         await handleCaptureResult(detection.descriptor);
       }
     } catch (err) {
-      console.error('Face verification error:', err);
+      console.error('Face processing error:', err);
+      // Fallback: If biometrics fail but photo is taken, we might allow it in setup?
+      // No, for login we need it. For setup, we'll give one more try.
       setPhase('error');
-      setStatusMsg(err.message || 'Verification failed');
+      setStatusMsg(err.message || 'Processing failed');
     }
   };
 
