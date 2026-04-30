@@ -123,13 +123,13 @@ export default function BinModel3D() {
     <div style={{ position: 'relative', width: '100%', height: '100%', background: 'rgba(0,0,0,0.2)', borderRadius: 16 }}>
       <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
       
-      {/* Simulation Controls - Padded from edge */}
-      <div style={{ position: 'absolute', top: 20, left: 20, display: 'flex', gap: 10, zIndex: 10 }}>
-        <button onClick={() => runDemo('normal')} className="scan-btn" style={{ height: 36, fontSize: 10, width: 'auto', padding: '0 16px', boxShadow: '0 4px 15px rgba(232,197,71,0.3)' }}>
-          DEMO SEGREGATE ♻️
+      {/* Simulation Controls - Small & Compact in corner */}
+      <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10 }}>
+        <button onClick={() => runDemo('normal')} className="scan-btn" style={{ height: 26, fontSize: 8, width: 'fit-content', padding: '0 10px', boxShadow: '0 4px 12px rgba(232,197,71,0.2)' }}>
+          SEGREGATE ♻️
         </button>
-        <button onClick={() => runDemo('mixed')} className="scan-btn" style={{ height: 36, fontSize: 10, width: 'auto', padding: '0 16px', background: '#E85454', boxShadow: '0 4px 15px rgba(232,84,84,0.3)' }}>
-          DEMO MIXED 🚨
+        <button onClick={() => runDemo('mixed')} className="scan-btn" style={{ height: 26, fontSize: 8, width: 'fit-content', padding: '0 10px', background: '#E85454', boxShadow: '0 4px 12px rgba(232,84,84,0.2)' }}>
+          MIXED 🚨
         </button>
       </div>
 
