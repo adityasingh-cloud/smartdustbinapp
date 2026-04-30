@@ -1,25 +1,24 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import * as THREE from 'three'
 
-// Functional points for annotations
 const POINTS = [
-  { id: 'lid',   pos: [0, 2.5, 0], label: '1. TOP LID', desc: 'Ultrasonic + Servo: Opens when user approaches' },
-  { id: 'cam',   pos: [0, 1.8, 0], label: '2. DETECTION', desc: 'ESP32 Cam + Sensors (Moisture, IR): Analyzes waste' },
-  { id: 'pipes', pos: [0, 1.1, 0], label: '3. SEGREGATOR', desc: 'Servo Trapdoor + Tubes: Routes waste to boxes' },
-  { id: 'bins',  pos: [0, 0.4, 0], label: '4. STORAGE', desc: 'Separate Boxes: Metal, Dry, and Wet waste' },
+  { id: 'lid',   cam: [0, 3, 4], target: [0, 2.5, 0], label: '1. TOP LID', desc: 'Ultrasonic + Dual Servo: Opens on proximity detection.' },
+  { id: 'det',   cam: [0, 2, 4], target: [0, 1.8, 0], label: '2. DETECTION', desc: 'ESP32 Cam + 2x ESP32 + IR/Moisture/Prox Sensors + Servo Trapdoor.' },
+  { id: 'seg',   cam: [0, 1, 4], target: [0, 1.1, 0], label: '3. SEGREGATOR', desc: 'Gravity Distribution Pipes: Routes waste to targets.' },
+  { id: 'bin',   cam: [0, 0, 4], target: [0, 0.4, 0], label: '4. STORAGE', desc: 'Vertical partitioned boxes for Metal, Dry, and Wet waste.' },
 ]
 
 export default function BinModel3D() {
   const mountRef = useRef(null)
   const [activePoint, setActivePoint] = useState(POINTS[0])
+  const [demoState, setDemoState] = useState('idle') // idle | scanning | segregating | error
+  const alarmAudio = useMemo(() => new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'), [])
 
   useEffect(() => {
     const mount = mountRef.current
     if (!mount) return
 
-    const W = mount.clientWidth
-    const H = 220
-
+    const W = mount.clientWidth, H = 320
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(W, H)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -27,102 +26,100 @@ export default function BinModel3D() {
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100)
-    camera.position.set(4, 3, 6)
-    camera.lookAt(0, 1.2, 0)
+    camera.position.set(0, 3, 6)
 
-    // Lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 0.4))
-    const spotlight = new THREE.SpotLight(0xE8C547, 2.5)
-    spotlight.position.set(5, 5, 5)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5))
+    const spotlight = new THREE.PointLight(0xE8C547, 5, 10)
+    spotlight.position.set(2, 4, 3)
     scene.add(spotlight)
 
-    const shellMat = new THREE.MeshStandardMaterial({ 
-      color: 0x2A2A28, transparent: true, opacity: 0.3, metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide 
-    })
-    const internalMat = new THREE.MeshStandardMaterial({ color: 0x444440, metalness: 0.9, roughness: 0.1 })
-    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 1, roughness: 0 })
-
     const binGroup = new THREE.Group()
+    const shellMat = new THREE.MeshStandardMaterial({ color: 0x2A2A28, transparent: true, opacity: 0.2, side: THREE.DoubleSide })
+    const compMat  = new THREE.MeshStandardMaterial({ color: 0x444440 })
 
-    // ─── 4 COMPARTMENTS ───
+    // ─── MODELING ───
 
-    // 1. Storage (Bottom)
-    const storageBox = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 1.6), shellMat)
-    storageBox.position.y = 0.4
-    binGroup.add(storageBox)
-    
-    // Internal Bin Boxes
-    const colors = [0x3A5A8C, 0xE8C547, 0x4A7C4E] // Metal, Dry, Wet
+    // 1. STORAGE (BOTTOM)
+    const storage = new THREE.Group(); storage.position.y = 0.4
+    const colors = [0x3A5A8C, 0xE8C547, 0x4A7C4E]
     colors.forEach((col, i) => {
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(0.45, 0.6, 1.4), 
-        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.4 })
-      )
-      box.position.set((i - 1) * 0.5, 0.4, 0)
-      binGroup.add(box)
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 1.2), new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.3 }))
+      b.position.x = (i - 1) * 0.5
+      storage.add(b)
     })
+    binGroup.add(storage)
 
-    // 2. Segregator (Tubes)
-    const segregatorBox = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 1.6), shellMat)
-    segregatorBox.position.y = 1.2
-    binGroup.add(segregatorBox)
-
-    // Tubes
+    // 2. SEGREGATOR (PIPES)
+    const pipes = new THREE.Group(); pipes.position.y = 1.1
     for(let i=-1; i<=1; i++) {
-      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.8, 16), pipeMat)
-      tube.position.set(i * 0.5, 1.2, 0)
-      tube.rotation.z = i * 0.3 // slant towards boxes
-      binGroup.add(tube)
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8), new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 1 }))
+      p.position.x = i * 0.45; p.rotation.z = i * 0.3; pipes.add(p)
     }
+    binGroup.add(pipes)
 
-    // 3. Detection Chamber
-    const detectionBox = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 1.6), shellMat)
-    detectionBox.position.y = 2.0
-    binGroup.add(detectionBox)
+    // 3. DETECTION CHAMBER (COMPLEX)
+    const det = new THREE.Group(); det.position.y = 1.8
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.5), compMat); det.add(base)
+    
+    // Detailed Internal Hardware
+    const hwGroup = new THREE.Group()
+    // Microcontrollers (2x ESP32)
+    const espGeom = new THREE.BoxGeometry(0.2, 0.05, 0.3)
+    const espMat = new THREE.MeshStandardMaterial({ color: 0x111111 })
+    const esp1 = new THREE.Mesh(espGeom, espMat); esp1.position.set(-0.5, 0.1, -0.4); hwGroup.add(esp1)
+    const esp2 = new THREE.Mesh(espGeom, espMat); esp2.position.set(-0.5, 0.1, 0); hwGroup.add(esp2)
+    
+    // ESP32 CAM
+    const cam = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), new THREE.MeshStandardMaterial({ color: 0x00ff00 }))
+    cam.position.set(0, 0.5, 0.5); hwGroup.add(cam)
 
-    // ESP32 Cam Model (Small Box)
-    const cam = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x00ff00 }))
-    cam.position.set(0, 2.3, 0.6)
-    binGroup.add(cam)
+    // Sensors (IR, Moisture, Prox)
+    const sensGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.1)
+    const ir = new THREE.Mesh(sensGeom, new THREE.MeshStandardMaterial({ color: 0xff0000 })); ir.position.set(0.5, 0.1, -0.3); hwGroup.add(ir)
+    const moist = new THREE.Mesh(sensGeom, new THREE.MeshStandardMaterial({ color: 0x0000ff })); moist.position.set(0.5, 0.1, 0); hwGroup.add(moist)
+    const prox = new THREE.Mesh(sensGeom, new THREE.MeshStandardMaterial({ color: 0xffff00 })); prox.position.set(0.5, 0.1, 0.3); hwGroup.add(prox)
 
-    // Trapdoor Servo
-    const trapdoor = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 1.4), internalMat)
-    trapdoor.position.y = 1.6
-    binGroup.add(trapdoor)
+    // Servo
+    const servo = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.1), new THREE.MeshStandardMaterial({ color: 0x222222 }))
+    servo.position.set(0, 0.1, -0.5); hwGroup.add(servo)
 
-    // 4. Top Lid
-    const lidBase = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, 1.6), internalMat)
-    lidBase.position.y = 2.4
-    binGroup.add(lidBase)
+    det.add(hwGroup)
+    
+    // Trapdoor
+    const trap = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 1.2), compMat)
+    trap.position.y = -0.1
+    det.add(trap)
+    binGroup.add(det)
 
-    const mainLid = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 1.6), new THREE.MeshStandardMaterial({ color: 0xE8C547 }))
-    mainLid.position.set(0, 2.5, 0)
-    binGroup.add(mainLid)
-
-    // Ultrasonic sensor (Two eyes)
-    const eyeGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.15, 16)
-    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 1 })
-    const eye1 = new THREE.Mesh(eyeGeom, eyeMat); eye1.position.set(-0.15, 2.6, 0.8); eye1.rotation.x = Math.PI/2; binGroup.add(eye1)
-    const eye2 = new THREE.Mesh(eyeGeom, eyeMat); eye2.position.set(0.15, 2.6, 0.8); eye2.rotation.x = Math.PI/2; binGroup.add(eye2)
+    // 4. LID
+    const lid = new THREE.Group(); lid.position.y = 2.5
+    const lidTop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 1.6), new THREE.MeshStandardMaterial({ color: 0xE8C547 }))
+    lid.add(lidTop)
+    binGroup.add(lid)
 
     scene.add(binGroup)
 
-    // Animation Loop
+    // ─── ANIMATION & INTERACTION ───
     const clock = new THREE.Clock()
     let frame
+    const currentTarget = new THREE.Vector3(0, 1.2, 0)
+    const desiredCam = new THREE.Vector3(0, 3, 6)
+
     function animate() {
       frame = requestAnimationFrame(animate)
       const t = clock.getElapsedTime()
-      
-      binGroup.rotation.y = t * 0.2
-      
-      // Animate Lid opening
-      mainLid.rotation.x = -Math.abs(Math.sin(t * 0.5)) * 1.2
-      mainLid.position.y = 2.5 + Math.abs(Math.sin(t * 0.5)) * 0.5
-      mainLid.position.z = -Math.abs(Math.sin(t * 0.5)) * 0.5
 
-      // Animate Trapdoor
-      trapdoor.rotation.z = Math.sin(t * 2) * 0.2
+      // Camera Smoothing
+      desiredCam.set(...activePoint.cam)
+      currentTarget.lerp(new THREE.Vector3(...activePoint.target), 0.05)
+      camera.position.lerp(desiredCam, 0.05)
+      camera.lookAt(currentTarget)
+
+      // Idle Rotation (Slow)
+      binGroup.rotation.y = t * 0.1
+
+      // Lid Oscillation
+      lidTop.rotation.x = -Math.abs(Math.sin(t * 0.5)) * 0.4
       
       renderer.render(scene, camera)
     }
@@ -133,13 +130,42 @@ export default function BinModel3D() {
       renderer.dispose()
       mount.removeChild(renderer.domElement)
     }
-  }, [])
+  }, [activePoint])
+
+  const runDemo = async (type = 'normal') => {
+    setDemoState('scanning')
+    setActivePoint(POINTS[1]) // Zoom to detection
+    
+    await new Promise(r => setTimeout(r, 2000))
+    
+    if (type === 'mixed') {
+      setDemoState('error')
+      alarmAudio.play()
+      setTimeout(() => { setDemoState('idle'); alarmAudio.pause(); alarmAudio.currentTime = 0; }, 3000)
+    } else {
+      setDemoState('segregating')
+      setActivePoint(POINTS[2]) // Zoom to segregator
+      await new Promise(r => setTimeout(r, 2000))
+      setDemoState('idle')
+      setActivePoint(POINTS[0])
+    }
+  }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 320, background: 'var(--card-dark)', borderRadius: 16, border: '1px solid var(--border)' }}>
+    <div style={{ position: 'relative', width: '100%', height: 350, background: 'var(--card-dark)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
       <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
       
-      {/* Overlays for explanation */}
+      {/* Simulation Controls */}
+      <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 8 }}>
+        <button onClick={() => runDemo('normal')} className="scan-btn" style={{ height: 32, fontSize: 9, width: 'auto', padding: '0 12px' }}>
+          DEMO: SEGREGATE ♻️
+        </button>
+        <button onClick={() => runDemo('mixed')} className="scan-btn" style={{ height: 32, fontSize: 9, width: 'auto', padding: '0 12px', background: '#E85454' }}>
+          DEMO: MIXED WASTE 🚨
+        </button>
+      </div>
+
+      {/* Compartment Selector */}
       <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', gap: 6, width: 140 }}>
         {POINTS.map(p => (
           <button 
@@ -148,9 +174,9 @@ export default function BinModel3D() {
             style={{ 
               background: activePoint.id === p.id ? 'var(--yellow)' : 'rgba(255,255,255,0.05)',
               color: activePoint.id === p.id ? 'var(--bg)' : 'var(--text-muted)',
-              border: 'none', padding: '4px 8px', borderRadius: 4,
+              border: 'none', padding: '6px 10px', borderRadius: 4,
               fontSize: 9, fontFamily: 'var(--font-mono)', textAlign: 'left',
-              transition: 'all 0.2s', cursor: 'pointer'
+              transition: 'all 0.2s', cursor: 'pointer', borderLeft: activePoint.id === p.id ? '4px solid var(--bg)' : 'none'
             }}
           >
             {p.label}
@@ -158,19 +184,32 @@ export default function BinModel3D() {
         ))}
       </div>
 
+      {/* Info Panel */}
       <div style={{ 
         position: 'absolute', bottom: 12, left: 12, right: 12, 
-        background: 'rgba(0,0,0,0.8)', padding: '10px 14px', borderRadius: 8,
-        border: '1px solid var(--yellow)', backdropFilter: 'blur(10px)',
-        animation: 'fadeIn 0.3s ease'
+        background: demoState === 'error' ? 'rgba(232, 84, 84, 0.9)' : 'rgba(0,0,0,0.85)', 
+        padding: '12px 16px', borderRadius: 10,
+        border: `1px solid ${demoState === 'error' ? '#fff' : 'var(--yellow)'}`, 
+        backdropFilter: 'blur(10px)', transition: 'all 0.3s'
       }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, color: 'var(--yellow)', letterSpacing: 1 }}>{activePoint.label}</div>
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-light)', marginTop: 4, lineHeight: 1.4 }}>{activePoint.desc}</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: demoState === 'error' ? '#fff' : 'var(--yellow)', letterSpacing: 1 }}>
+            {demoState === 'scanning' ? '🔍 ANALYZING WASTE...' : 
+             demoState === 'segregating' ? '🛤️ ROUTING TO BIN...' : 
+             demoState === 'error' ? '⚠️ ALARM: UNKNOWN WASTE DETECTED!' :
+             activePoint.label}
+          </div>
+          {demoState === 'idle' && <div style={{ fontSize: 10, opacity: 0.5, fontFamily: 'var(--font-mono)' }}>CLICK TO EXPLORE</div>}
+        </div>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#fff', marginTop: 6, lineHeight: 1.5, opacity: 0.9 }}>
+          {demoState === 'error' ? 'Multiple/Non-detectable items found. Please remove and scan separately.' : activePoint.desc}
+        </div>
       </div>
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scanPulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
       `}</style>
     </div>
   )
 }
+
