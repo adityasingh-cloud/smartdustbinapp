@@ -89,7 +89,7 @@ export default function Dashboard({ onBell, onSettings }) {
 
       {/* 3D Model */}
       <div className="px card-enter" style={{ marginTop: 16 }}>
-        <div className="card" style={{ padding: 0, overflow: 'hidden', height: 180, background: 'transparent', border: 'none' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', height: 350, background: 'transparent', border: 'none' }}>
           <BinModel3D />
         </div>
       </div>
