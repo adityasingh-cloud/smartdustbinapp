@@ -60,37 +60,37 @@ export default function Auth() {
 
       <div className="card" style={{ padding: 20, background: 'rgba(37,37,35,0.8)', backdropFilter: 'blur(10px)', marginBottom: 20 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 16, color: 'var(--text-light)', letterSpacing: 2 }}>
-          {isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
+          {isLogin ? t('signIn').toUpperCase() : t('createAccount').toUpperCase()}
         </h2>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {!isLogin && (
             <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Full Name</label>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('fullName')}</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="John Doe" required />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Phone Number</label>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('phoneNumber')}</label>
                 <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="+91..." required />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>State</label>
+                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('state')}</label>
                   <input type="text" value={state} onChange={(e) => setState(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="State" required />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>City</label>
+                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('city')}</label>
                   <input type="text" value={city} onChange={(e) => setCity(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="City" required />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Pincode</label>
+                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('pincode')}</label>
                   <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="110001" required />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>DOB</label>
+                  <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('dob')}</label>
                   <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} required />
                 </div>
               </div>
@@ -98,19 +98,19 @@ export default function Auth() {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Email Address</label>
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('emailAddress')}</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="eco@warrior.com" required />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Password</label>
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('password')}</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={{ background: '#2A2A28', border: '1px solid #444', borderRadius: 6, padding: 10, color: '#fff', fontSize: 13 }} placeholder="••••••••" required />
           </div>
 
           {error && <div style={{ color: '#E74C3C', fontSize: 11, fontFamily: 'var(--font-mono)', textAlign: 'center' }}>{error}</div>}
 
           <button type="submit" disabled={loading} className="scan-btn" style={{ marginTop: 8, height: 44, fontSize: 18 }}>
-            {loading ? 'PROCESSING...' : isLogin ? 'SIGN IN' : 'SIGN UP'}
+            {loading ? t('processing').toUpperCase() : isLogin ? t('signIn').toUpperCase() : t('signUp').toUpperCase()}
           </button>
         </form>
 
@@ -132,7 +132,7 @@ export default function Auth() {
           onMouseOver={(e) => e.currentTarget.style.background = 'rgba(232,197,71,0.2)'}
           onMouseOut={(e) => e.currentTarget.style.background = 'rgba(232,197,71,0.1)'}
         >
-          <span style={{ fontSize: 18 }}>👤</span> SIGN IN WITH FACE ID
+          <span style={{ fontSize: 18 }}>👤</span> {t('signInFaceId').toUpperCase()}
         </button>
 
         <div style={{ marginTop: 20, textAlign: 'center' }}>
@@ -140,7 +140,7 @@ export default function Auth() {
             onClick={() => setIsLogin(!isLogin)}
             style={{ background: 'none', border: 'none', color: 'var(--yellow)', fontFamily: 'var(--font-mono)', fontSize: 11, cursor: 'pointer' }}
           >
-            {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+            {isLogin ? t('noAccount') : t('alreadyHaveAccount')}
           </button>
         </div>
       </div>

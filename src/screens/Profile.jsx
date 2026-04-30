@@ -170,7 +170,7 @@ export default function Profile() {
 
         <div style={{ textAlign: 'center', width: '100%' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 34, letterSpacing: 2, lineHeight: 1 }}>
-            {user?.name?.toUpperCase() || 'GUEST USER'}
+            {user?.name?.toUpperCase() || t('guestUser')}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--orange)', textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>
             {t('ecoWarrior')}   {t('level')} {user?.level || 1}
@@ -210,7 +210,7 @@ export default function Profile() {
                 <input type="text" value={formData.pincode} onChange={e => setFormData({...formData, pincode: e.target.value})} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '8px 12px', outline: 'none' }} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>DOB</label>
+                <label style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{t('dob')}</label>
                 <input type="date" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', borderRadius: 6, color: '#fff', padding: '8px 12px', outline: 'none' }} />
               </div>
             </div>

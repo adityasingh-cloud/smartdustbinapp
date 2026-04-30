@@ -66,7 +66,7 @@ export default function Rewards() {
     <div className="screen screen-fade">
       {/* Header */}
       <div className="topbar">
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: 3, color: 'var(--yellow)' }}>REWARDS</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, letterSpacing: 3, color: 'var(--yellow)' }}>{t('rewards').toUpperCase()}</div>
       </div>
 
       {/* Stats Card */}
@@ -131,8 +131,8 @@ export default function Rewards() {
         <div className="card" style={{ background: 'var(--card-darker)', border: '1px dashed var(--yellow)', padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--yellow)' }}>REFER A FRIEND</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Get 50 EcoCoins for every referral</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--yellow)' }}>{t('referAFriend').toUpperCase()}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{t('referralBonus')}</div>
             </div>
             <div style={{ fontSize: 24 }}>🎁</div>
           </div>
@@ -174,7 +174,7 @@ export default function Rewards() {
               }
             }}
           >
-            SHARE CODE: SMARTBIN50 📤
+            {t('shareCode').toUpperCase()}: SMARTBIN50 📤
           </button>
         </div>
       </div>
@@ -182,7 +182,7 @@ export default function Rewards() {
       {/* Redemption History */}
       {history.length > 0 && (
         <>
-          <div className="section-label px" style={{ marginTop: 24 }}>MY VOUCHERS</div>
+          <div className="section-label px" style={{ marginTop: 24 }}>{t('myVouchers').toUpperCase()}</div>
           <div className="px card-enter">
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {history.map((h, i) => (
