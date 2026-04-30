@@ -139,22 +139,38 @@ export default function Rewards() {
           
           <button 
             className="scan-btn" 
+            id="share-button"
             style={{ marginTop: 20, height: 44, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-            onClick={async () => {
-              const shareData = {
-                title: 'SmartBin',
-                text: decodeURIComponent(getReferralMessage().replace(/\+/g, ' ')),
-                url: 'https://smartbin.app'
-              }
+            onClick={async (e) => {
+              const shareText = `Hey! Use code SMARTBIN50 to get 50 EcoCoins on SmartBin. Download: https://smartbin.app`
+              
               if (navigator.share) {
                 try {
-                  await navigator.share(shareData)
+                  await navigator.share({
+                    title: 'SmartBin Referral',
+                    text: shareText,
+                    url: 'https://smartbin.app'
+                  })
                 } catch (err) {
                   console.log('Share failed:', err)
                 }
               } else {
-                // Fallback for browsers that don't support navigator.share
-                window.open(`https://wa.me/?text=${getReferralMessage()}`, '_blank')
+                // Clipboard fallback
+                try {
+                  await navigator.clipboard.writeText(shareText)
+                  const btn = e.currentTarget
+                  const oldText = btn.innerText
+                  btn.innerText = 'COPIED TO CLIPBOARD! ✅'
+                  btn.style.background = 'var(--green)'
+                  setTimeout(() => {
+                    btn.innerText = oldText
+                    btn.style.background = 'var(--yellow)'
+                    // Also open WhatsApp as a convenience
+                    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank')
+                  }, 2000)
+                } catch (err) {
+                  window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank')
+                }
               }
             }}
           >

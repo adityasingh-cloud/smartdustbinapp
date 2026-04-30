@@ -207,6 +207,7 @@ export function AppProvider({ children }) {
       user, setUser, binData, ecoCoins, totalScans, recentScans, leaderboard, 
       loading, language, changeLanguage, t: translate,
       theme, toggleTheme, faceVerified, setFaceVerified,
+      notificationsEnabled, setNotificationsEnabled,
       login, register, logout, addEcoCoins, saveScan, redeemCoins 
     }}>
       {children}
