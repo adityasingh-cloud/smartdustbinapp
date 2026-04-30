@@ -99,28 +99,46 @@ export default function FaceIDScreen({ onClose, onSuccess, targetUid, mode = 'se
   };
 
   const captureAndVerify = async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || videoRef.current.readyState !== 4) {
+      setPhase('error');
+      setStatusMsg('Camera not ready. Please refresh.');
+      return;
+    }
+
     setPhase('verifying');
+    setStatusMsg('Analyzing Face...');
+
+    // Safety timeout to prevent infinite "revolving"
+    const timeoutId = setTimeout(() => {
+      if (phase === 'verifying') {
+        setPhase('error');
+        setStatusMsg('Detection timeout. Try again.');
+      }
+    }, 8000);
 
     try {
-      console.log('Capture starting...');
+      console.log('Starting Face API detection...');
+      // Use the more accurate SsdMobilenetv1 for the critical final capture
       const detection = await window.faceapi.detectSingleFace(
         videoRef.current, 
-        new window.faceapi.TinyFaceDetectorOptions()
+        new window.faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 })
       ).withFaceLandmarks().withFaceDescriptor();
 
+      clearTimeout(timeoutId);
+
       if (!detection) {
-        throw new Error('Lost face tracking. Try again.');
+        throw new Error('Face not found. Keep still and center your face.');
       }
 
-      console.log('Face detected, processing result...');
+      console.log('Detection successful, proceeding to result...');
       if (mode === 'setup') {
         await handleSetup(detection.descriptor);
       } else {
         await handleCaptureResult(detection.descriptor);
       }
     } catch (err) {
-      console.error('Capture error:', err);
+      clearTimeout(timeoutId);
+      console.error('Face verification error:', err);
       setPhase('error');
       setStatusMsg(err.message || 'Verification failed');
     }
